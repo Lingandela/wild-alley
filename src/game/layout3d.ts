@@ -8,16 +8,16 @@ export const BALL_R3 = 0.048;
 export const THROW_Z = 1.18;
 export const CAB_W = 1.08;
 export const CAB_FRONT = 0.38;
-export const FLAT = 3.05;
-export const RAMP_RUN = 0.72;
-export const RAMP_RISE = 0.48;
+export const FLAT = 2.2;
+export const RAMP_RUN = 0.62;
+export const RAMP_RISE = 0.44;
 /** Lean back from vertical so the face reads to the thrower. */
-export const BOARD_LEAN = 0.16;
+export const BOARD_LEAN = 0.18;
 /** Circular target on the wooden head. Center = 50-point cup. */
-export const FACE_R = 0.46;
-export const FACE_CY = 0.52;
-export const HEAD_W = 1.14;
-export const HEAD_H = 1.28;
+export const FACE_R = 0.5;
+export const FACE_CY = 0.54;
+export const HEAD_W = 1.22;
+export const HEAD_H = 1.36;
 /** Fraction of post-lip distance that is the ramp (rest is the scoring face). */
 export const RAMP_T = 0.14;
 export const SPAWN = { x: 0.0, y: 0.8, z: 4.2 };
@@ -32,7 +32,7 @@ export const COL = {
 } as const;
 
 /** Concentric ring radii on the face (board-local, centered at FACE_CY). */
-export const SKEE_RINGS = [0.445, 0.325, 0.225, 0.135];
+export const SKEE_RINGS = [0.48, 0.36, 0.25, 0.15];
 
 /**
  * Real skee-ball anatomy (Skee-Ball Inc / arcade target):
@@ -50,13 +50,13 @@ export const SKEE_CUPS: Array<{
   special?: Hole["special"];
   captureEasy?: boolean;
 }> = [
-  { value: 100, lx: -0.42, ly: 1.06, r: 0.046, special: "plinko" },
-  { value: 100, lx: 0.42, ly: 1.06, r: 0.046 },
-  { value: 50, lx: 0, ly: 0.52, r: 0.048 },
-  { value: 40, lx: 0, ly: 0.395, r: 0.052 },
-  { value: 30, lx: 0, ly: 0.29, r: 0.056 },
-  { value: 20, lx: 0, ly: 0.195, r: 0.062, captureEasy: true },
-  { value: 10, lx: 0, ly: 0.1, r: 0.078, captureEasy: true },
+  { value: 100, lx: -0.46, ly: 1.12, r: 0.05, special: "plinko" },
+  { value: 100, lx: 0.46, ly: 1.12, r: 0.05 },
+  { value: 50, lx: 0, ly: 0.54, r: 0.05 },
+  { value: 40, lx: 0, ly: 0.4, r: 0.054 },
+  { value: 30, lx: 0, ly: 0.29, r: 0.058 },
+  { value: 20, lx: 0, ly: 0.19, r: 0.064, captureEasy: true },
+  { value: 10, lx: 0, ly: 0.09, r: 0.082, captureEasy: true },
 ];
 
 export function xWorld(lane: LaneDef, x: number) {
@@ -196,7 +196,7 @@ export function crateWorld(lane: LaneDef, c: { x: number; y: number; w: number; 
 }
 
 export function seatEye() {
-  return { x: 0, y: 1.5, z: THROW_Z + 0.78 };
+  return { x: 0, y: 1.46, z: THROW_Z + 0.62 };
 }
 
 export function seatLook() {

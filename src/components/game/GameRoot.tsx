@@ -47,6 +47,7 @@ const EMPTY: Snapshot = {
   isVersus: false,
   winner: -1,
   pointerLocked: false,
+  seated: false,
 };
 
 export function GameRoot() {

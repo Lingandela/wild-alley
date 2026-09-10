@@ -139,8 +139,8 @@ export function Player({ game }: { game: WildAlleyGame }) {
       const ty = eye.y;
       const tz = eye.z + charge;
       const lx = tgt.x + s.aimX * 0.14;
-      const ly = tgt.y - down.value * 0.06;
-      const lz = tgt.z;
+      const ly = tgt.y - down.value * 0.52;
+      const lz = tgt.z + down.value * 0.35;
       if (!wasSeated.current) {
         camera.position.set(tx, ty, tz);
         look.current.set(lx, ly, lz);

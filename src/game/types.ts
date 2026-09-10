@@ -137,6 +137,7 @@ export type Snapshot = {
   isVersus: boolean;
   winner: number;
   pointerLocked: boolean;
+  seated: boolean;
 };
 
 export type ThrowFlags = {

@@ -226,6 +226,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
   const { gl } = useThree();
   const eHeld = useRef(false);
   const enterHeld = useRef(false);
+  const qHeld = useRef(false);
   useEffect(() => {
     game.input.bind(gl.domElement);
     return () => game.input.unbind();
@@ -250,7 +251,14 @@ function Sim({ game }: { game: WildAlleyGame }) {
     if (eNow && !eHeld.current) game.toggleWallet();
     eHeld.current = eNow;
 
-    if (s.walletOpen && (s.phase === "pick" || s.canSabotage())) {
+    const qNow = game.input.has("KeyQ");
+    if (qNow && !qHeld.current) {
+      if (s.seated && s.screen === "play") game.standUp();
+      else if (s.screen === "play" && !s.seated && nearCabinet(s.playerX, s.playerZ)) game.sitDown();
+    }
+    qHeld.current = qNow;
+
+    if (s.walletOpen && (s.phase === "pick" || s.phase === "intro" || s.phase === "aim" || s.canSabotage())) {
       for (let d = 0; d < 5; d++) {
         const code = `Digit${d + 1}`;
         if (game.input.has(code)) {
@@ -269,6 +277,8 @@ function Sim({ game }: { game: WildAlleyGame }) {
     if (enter && !enterHeld.current) {
       if (s.screen === "menu" && nearCabinet(s.playerX, s.playerZ)) {
         game.startCarnival();
+      } else if (s.screen === "play" && !s.seated && nearCabinet(s.playerX, s.playerZ)) {
+        game.sitDown();
       } else if (s.phase === "tally") s.skipTally();
       else if (s.phase === "pick" || s.phase === "intro") s.readyThrow();
       else if (s.phase === "handoff") s.finishHandoff();
@@ -278,12 +288,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
 
     if (s.phase === "demo") s.tickDemo(dt);
 
-    if ((s.phase === "pick" || s.phase === "intro" || s.phase === "handoff") && game.input.up() && !s.walletOpen) {
-      if (s.phase === "handoff") s.finishHandoff();
-      s.readyThrow();
-    }
-
-    if (s.phase === "aim" && !s.walletOpen) {
+    if (s.phase === "aim" && !s.walletOpen && s.seated) {
       const steer = (game.input.left() ? -1 : 0) + (game.input.right() ? 1 : 0);
       s.aimX += steer * 0.55 * dt;
       s.aimX = Math.max(-s.lane.rail + 0.08, Math.min(s.lane.rail - 0.08, s.aimX));

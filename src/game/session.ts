@@ -272,16 +272,26 @@ export class Session {
   }
 
   toggleCard(uid: string) {
-    if (this.phase !== "pick" || this.paused) return;
+    if (this.paused) return;
+    if (this.phase !== "pick" && this.phase !== "intro" && this.phase !== "aim") return;
     const i = this.selected.indexOf(uid);
     if (i >= 0) {
       this.selected.splice(i, 1);
+      if (this.phase === "aim") this.applySelectedCards();
       return;
     }
     if (this.selected.length >= MAX_PLAY) return;
     if (!this.hand.some((c) => c.uid === uid)) return;
     this.selected.push(uid);
     this.kickFx(this.hand.find((c) => c.uid === uid)?.effect ?? "card");
+    if (this.phase === "aim") this.applySelectedCards();
+  }
+
+  standUp() {
+    this.seated = false;
+    this.seatLatch = false;
+    this.walletOpen = false;
+    this.charging = false;
   }
 
   readyThrow() {
@@ -895,6 +905,7 @@ export class Session {
       isVersus: this.mode === "versus",
       winner: this.scores[0]! === this.scores[1]! ? -1 : this.scores[0]! > this.scores[1]! ? 0 : 1,
       pointerLocked: this.pointerLocked,
+      seated: this.seated,
     };
   }
 

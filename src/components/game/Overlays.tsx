@@ -64,9 +64,8 @@ function How({ game }: { game: WildAlleyGame }) {
       <div className="ticket w-full max-w-md p-6">
         <h2 className="font-display text-2xl">House rules</h2>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted">
-          <li>Walk the parlor with WASD. Click to look. Walk up to the machine and hit START (or Enter when close). Balls roll down the return rail.</li>
-          <li>Hold W / Space or drag back, then let go — the ball hops the ramp into the cups. A and D add english. The cream dots are the aim path.</li>
-          <li>E looks down at a bifold wallet. Tickets live in the card slots. Hover to slide one out, click (or 1–5) to tear it onto the table.</li>
+          <li>Walk the parlor with WASD. Click to look. Walk up and hit START on the machine (or Play). Q stands up; Sit puts you back at the table.</li>
+          <li>Open the <b>Wallet</b> and click tickets onto the table (two max). Then <b>Throw</b>. Hold W / Space or drag back, release to roll. A and D add english.</li>
           <li>Cups pay chips. Tickets build mult. Some cups dump you into plinko or pinball.</li>
           <li>Pass & Play: while their ball is live, open the wallet for sabotage.</li>
         </ul>
@@ -90,7 +89,24 @@ function Hud({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
           {snap.ballsLeft} left · alley {snap.laneIndex + 1}/{snap.laneCount}
         </p>
       </div>
-      <div className="pointer-events-auto flex gap-2">
+      <div className="pointer-events-auto flex flex-wrap justify-end gap-2">
+        <button type="button" className="ticket px-3 py-2 font-display text-sm" onClick={() => game.toggleWallet()}>
+          {snap.walletOpen ? "Close wallet" : "Wallet"}
+        </button>
+        {snap.seated ? (
+          <button type="button" className="ticket px-3 py-2 text-sm" onClick={() => game.standUp()}>
+            Walk
+          </button>
+        ) : (
+          <button type="button" className="ticket px-3 py-2 text-sm" onClick={() => game.sitDown()}>
+            Sit
+          </button>
+        )}
+        {(snap.phase === "pick" || snap.phase === "intro") && (
+          <button type="button" className="ticket px-3 py-2 font-display text-sm" onClick={() => game.ready()}>
+            Throw
+          </button>
+        )}
         <button
           type="button"
           className="ticket grid size-11 place-items-center"
@@ -126,31 +142,25 @@ function Intro({ snap }: { snap: Snapshot }) {
 }
 
 function AimHint({ snap }: { snap: Snapshot }) {
-  if (snap.walletOpen) {
-    return (
-      <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Tear a ticket from a slot · 1–5 or click · E closes
-      </p>
-    );
-  }
+  if (snap.walletOpen) return null;
   if (snap.phase === "aim") {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Hold W / Space or drag back · release to roll · A/D english · E wallet
+        Hold W / Space or drag back · release to roll · A/D english
       </p>
     );
   }
   if (snap.phase === "pick" || snap.phase === "intro") {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        E wallet · then sling the ball
+        Wallet to pick tickets · Throw when ready · Q walks away
       </p>
     );
   }
   if (snap.canSabotage) {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-danger [text-shadow:0_2px_0_#100c12]">
-        Ball is live — E for sabotage
+        Ball is live — open the wallet for sabotage
       </p>
     );
   }
@@ -162,6 +172,44 @@ function AimHint({ snap }: { snap: Snapshot }) {
     );
   }
   return null;
+}
+
+function WalletTray({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
+  if (!snap.walletOpen) return null;
+  const list = snap.canSabotage ? snap.sabotageHand : snap.hand;
+  return (
+    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 bg-bg/80 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <p className="font-display text-xl text-fg">Wallet</p>
+          <p className="text-xs text-muted">
+            {snap.canSabotage ? "Tear a sabotage ticket" : "Click a ticket · two max · 1–5"}
+          </p>
+          <button type="button" className="ticket px-3 py-1.5 text-sm" onClick={() => game.toggleWallet()}>
+            Close
+          </button>
+        </div>
+        {list.length === 0 ? (
+          <p className="text-sm text-muted">Empty pockets.</p>
+        ) : (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {list.map((c) => (
+              <Ticket
+                key={c.uid}
+                card={c}
+                selected={snap.selected.includes(c.uid)}
+                compact
+                onClick={() => {
+                  if (snap.canSabotage) game.sabotage(c.uid);
+                  else game.toggleCard(c.uid);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function TouchPad({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
@@ -358,6 +406,7 @@ export function Overlays({ game, snap }: { game: WildAlleyGame; snap: Snapshot }
           <Hud game={game} snap={snap} />
           <Intro snap={snap} />
           <AimHint snap={snap} />
+          <WalletTray game={game} snap={snap} />
           <Tally game={game} snap={snap} />
           <Prize game={game} snap={snap} />
           <Handoff game={game} snap={snap} />

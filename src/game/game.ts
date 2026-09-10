@@ -22,6 +22,7 @@ export class WildAlleyGame {
       this.juice.reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }
     this.wireControls();
+    this.wireQa();
   }
 
   private persist() {
@@ -47,9 +48,23 @@ export class WildAlleyGame {
     };
   }
 
+  private wireQa() {
+    window.__qa = () => ({
+      screen: this.session.screen,
+      phase: this.session.phase,
+      walletOpen: this.session.walletOpen,
+      seated: this.session.seated,
+      paused: this.session.paused,
+      ballsLeft: this.session.ballsLeft,
+      hand: this.session.hand.map((c) => c.name),
+      selected: this.session.selected.length,
+    });
+  }
+
   destroy() {
     this.input.unbind();
     if (window.__controlsTest) delete window.__controlsTest;
+    if (window.__qa) delete window.__qa;
   }
 
   startCarnival() {
@@ -126,6 +141,16 @@ export class WildAlleyGame {
     this.onUi();
   }
 
+  standUp() {
+    this.session.standUp();
+    this.onUi();
+  }
+
+  sitDown() {
+    this.session.seatAtTable();
+    this.onUi();
+  }
+
   togglePause() {
     if (this.session.screen !== "play") return;
     this.session.paused = !this.session.paused;
@@ -139,6 +164,16 @@ declare global {
       getYaw: () => number;
       getSpeed: () => number;
       setKeys?: (codes: string[]) => void;
+    };
+    __qa?: () => {
+      screen: string;
+      phase: string;
+      walletOpen: boolean;
+      seated: boolean;
+      paused: boolean;
+      ballsLeft: number;
+      hand: string[];
+      selected: number;
     };
   }
 }

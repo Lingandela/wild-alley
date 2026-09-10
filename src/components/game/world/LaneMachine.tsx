@@ -104,11 +104,10 @@ function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
   const h = lane.holes[index]!;
   const w = holeWorld(lane, h);
   const col = holeRing(h.value);
-  const wall = retro("#c4a078", { emissive: "#8a5a38", emissiveIntensity: 0.35 });
-  const floor = retro("#f0e6d0", { emissive: "#efe6d4", emissiveIntensity: 0.7 });
-  const rim = retro("#f0e6d0", { emissive: col, emissiveIntensity: 0.7 });
+  const wall = retro("#c4a078", { emissive: "#8a5a38", emissiveIntensity: 0.4 });
+  const floor = retro("#efe6d4", { emissive: "#efe6d4", emissiveIntensity: 0.55 });
+  const rim = retro("#fff6e4", { emissive: col, emissiveIntensity: 0.75 });
   const label = String(h.label ?? h.value);
-  const is100 = h.value >= 100;
   const plate = useMemo(() => {
     const m = new THREE.MeshBasicMaterial({
       map: paintCupLabel(label),
@@ -119,38 +118,31 @@ function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
   if (!w.onBoard) {
     return (
       <group position={[w.x, w.y, w.z]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]} material={wall}>
-          <cylinderGeometry args={[w.r * 0.92, w.r * 0.72, 0.08, 14]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={wall}>
+          <cylinderGeometry args={[w.r * 0.9, w.r * 0.72, 0.06, 14]} />
         </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.065, 0]} material={floor}>
-          <circleGeometry args={[w.r * 0.72, 12]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} material={rim}>
+          <ringGeometry args={[w.r * 0.7, w.r * 1.12, 16]} />
         </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]} material={plate}>
-          <planeGeometry args={[w.r * 1.2, w.r * 0.85]} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} material={rim}>
-          <ringGeometry args={[w.r * 0.72, w.r * 1.1, 16]} />
-        </mesh>
-        <Num text={label} position={[0, 0.02, w.r + 0.08]} />
+        <Num text={label} position={[0, 0.02, w.r + 0.1]} />
       </group>
     );
   }
-  const side = Math.sign(h.faceX || 1) * (w.r + 0.13);
+  const side = (h.faceX ?? 0) !== 0 ? Math.sign(h.faceX!) * (w.r + 0.14) : w.r + 0.14;
   return (
-    <group position={[w.lx, w.ly, 0.02]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.02]} material={wall}>
-        <cylinderGeometry args={[w.r * 0.94, w.r * 0.82, 0.05, 16]} />
+    <group position={[w.lx, w.ly, 0.03]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.015]} material={wall}>
+        <cylinderGeometry args={[w.r * 0.7, w.r * 0.55, 0.04, 16]} />
       </mesh>
-      <mesh position={[0, 0, -0.04]} material={floor}>
-        <circleGeometry args={[w.r * 0.82, 16]} />
-      </mesh>
-      <mesh position={[0, 0, -0.035]} material={plate}>
-        <planeGeometry args={[w.r * 1.2, w.r * 0.85]} />
+      <mesh position={[0, 0, -0.03]} material={floor}>
+        <circleGeometry args={[w.r * 0.55, 14]} />
       </mesh>
       <mesh material={rim}>
-        <ringGeometry args={[w.r * 0.8, w.r * 1.18, 20]} />
+        <ringGeometry args={[w.r * 0.55, w.r * 1.22, 22]} />
       </mesh>
-      {is100 && <Num text={label} position={[side, -0.01, 0.02]} w={0.18} h={0.11} />}
+      <mesh position={[side, 0, 0.012]} material={plate}>
+        <planeGeometry args={[0.16, 0.11]} />
+      </mesh>
     </group>
   );
 }
@@ -380,11 +372,14 @@ export function LaneMachine({
             <boxGeometry args={[HEAD_W + 0.04, 0.08, 0.22]} />
           </mesh>
           <mesh position={[0, FACE_CY, 0.012]} material={faceMat}>
-            <circleGeometry args={[FACE_R, 32]} />
+            <circleGeometry args={[FACE_R, 40]} />
+          </mesh>
+          <mesh position={[0, FACE_CY, 0.03]} rotation={[Math.PI / 2, 0, 0]} material={body}>
+            <torusGeometry args={[FACE_R + 0.035, 0.038, 8, 32]} />
           </mesh>
           {SKEE_RINGS.map((r) => (
-            <mesh key={r} position={[0, FACE_CY, 0.028]} rotation={[Math.PI / 2, 0, 0]} material={ringMat}>
-              <torusGeometry args={[r, 0.011, 8, 28]} />
+            <mesh key={r} position={[0, FACE_CY, 0.032]} rotation={[Math.PI / 2, 0, 0]} material={ringMat}>
+              <torusGeometry args={[r, 0.016, 8, 32]} />
             </mesh>
           ))}
           {lane.holes.map((_, i) => (

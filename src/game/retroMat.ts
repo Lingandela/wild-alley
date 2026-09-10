@@ -532,7 +532,7 @@ export function holeRing(value: number) {
 }
 
 export function paintSkeeFace() {
-  const key = "skeeface-v3";
+  const key = "skeeface-v4";
   const hit = signCache.get(key);
   if (hit) return hit;
   const s = 1024;
@@ -544,59 +544,59 @@ export function paintSkeeFace() {
   const cy = s / 2;
   const R = s / 2 - 10;
 
-  g.fillStyle = "#e4c08a";
+  g.fillStyle = "#e8c894";
   g.beginPath();
   g.arc(cx, cy, R, 0, Math.PI * 2);
   g.fill();
 
-  g.strokeStyle = "rgba(90,50,24,0.16)";
+  g.strokeStyle = "rgba(90,50,24,0.14)";
   g.lineWidth = 3;
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 14; i++) {
     g.beginPath();
-    g.ellipse(cx, cy, R * (0.18 + i * 0.05), R * 0.94, 0, 0, Math.PI * 2);
+    g.ellipse(cx, cy, R * (0.2 + i * 0.055), R * 0.94, 0, 0, Math.PI * 2);
     g.stroke();
   }
 
   g.strokeStyle = "#efe6d4";
-  g.lineWidth = 22;
+  g.lineWidth = 28;
   g.beginPath();
   g.arc(cx, cy, R, 0, Math.PI * 2);
   g.stroke();
-  g.strokeStyle = "#c47a3a";
-  g.lineWidth = 6;
+  g.strokeStyle = "#8a2418";
+  g.lineWidth = 8;
   g.beginPath();
-  g.arc(cx, cy, R - 14, 0, Math.PI * 2);
+  g.arc(cx, cy, R - 18, 0, Math.PI * 2);
   g.stroke();
 
-  const rings = [0.97, 0.71, 0.49, 0.29];
+  const rings = [0.96, 0.72, 0.5, 0.3];
   g.strokeStyle = "#f4ead4";
-  g.lineWidth = 12;
+  g.lineWidth = 14;
   for (const k of rings) {
     g.beginPath();
     g.arc(cx, cy, R * k, 0, Math.PI * 2);
     g.stroke();
   }
   g.strokeStyle = "#6a2418";
-  g.lineWidth = 3;
+  g.lineWidth = 4;
   for (const k of rings) {
     g.beginPath();
-    g.arc(cx, cy, R * k - 8, 0, Math.PI * 2);
+    g.arc(cx, cy, R * k - 9, 0, Math.PI * 2);
     g.stroke();
   }
 
-  const FACE_CY = 0.52;
-  const FACE_R = 0.46;
+  const FACE_CY = 0.54;
+  const FACE_R = 0.5;
   const toC = (lx: number, ly: number) => ({
     x: cx + (lx / FACE_R) * R,
     y: cy - ((ly - FACE_CY) / FACE_R) * R,
   });
 
   const stack: Array<{ v: number; lx: number; ly: number; rr: number }> = [
-    { v: 50, lx: 0, ly: 0.52, rr: 0.048 },
-    { v: 40, lx: 0, ly: 0.395, rr: 0.052 },
-    { v: 30, lx: 0, ly: 0.29, rr: 0.056 },
-    { v: 20, lx: 0, ly: 0.195, rr: 0.062 },
-    { v: 10, lx: 0, ly: 0.1, rr: 0.078 },
+    { v: 50, lx: 0, ly: 0.54, rr: 0.05 },
+    { v: 40, lx: 0, ly: 0.4, rr: 0.054 },
+    { v: 30, lx: 0, ly: 0.29, rr: 0.058 },
+    { v: 20, lx: 0, ly: 0.19, rr: 0.064 },
+    { v: 10, lx: 0, ly: 0.09, rr: 0.082 },
   ];
 
   g.textAlign = "center";
@@ -604,31 +604,30 @@ export function paintSkeeFace() {
   for (const h of stack) {
     const p = toC(h.lx, h.ly);
     const rad = (h.rr / FACE_R) * R;
-    // Hole is a shallow wood well, not a black void. Numbers live BESIDE it.
-    g.fillStyle = "#8a5538";
+    g.fillStyle = "#c4a078";
     g.beginPath();
     g.arc(p.x, p.y, rad, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = "#5a3824";
+    g.fillStyle = "#efe6d4";
     g.beginPath();
-    g.arc(p.x, p.y, rad * 0.72, 0, Math.PI * 2);
+    g.arc(p.x, p.y, rad * 0.55, 0, Math.PI * 2);
     g.fill();
-    g.strokeStyle = "#efe6d4";
-    g.lineWidth = 8;
+    g.strokeStyle = "#fff6e4";
+    g.lineWidth = 10;
     g.beginPath();
     g.arc(p.x, p.y, rad + 2, 0, Math.PI * 2);
     g.stroke();
-    g.strokeStyle = "#c47a3a";
-    g.lineWidth = 3;
+    g.strokeStyle = "#8a2418";
+    g.lineWidth = 4;
     g.beginPath();
-    g.arc(p.x, p.y, rad + 8, 0, Math.PI * 2);
+    g.arc(p.x, p.y, rad + 9, 0, Math.PI * 2);
     g.stroke();
 
-    const tx = p.x + rad + Math.max(36, rad * 0.85);
-    const ty = p.y + (h.v === 10 ? 6 : 0);
-    const fs = h.v === 10 ? 78 : h.v === 50 ? 70 : 64;
+    const tx = p.x + rad + 52;
+    const ty = p.y;
+    const fs = h.v === 10 ? 92 : 80;
     g.font = `700 ${fs}px Georgia, serif`;
-    g.lineWidth = 10;
+    g.lineWidth = 12;
     g.strokeStyle = "#fff6e4";
     g.strokeText(String(h.v), tx, ty);
     g.fillStyle = "#6a1810";

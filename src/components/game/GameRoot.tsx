@@ -80,7 +80,7 @@ export function GameRoot() {
           <Suspense fallback={<div className="h-full w-full bg-bg" />}>
             <ArcadeCanvas
               game={game}
-              view={`${snap.screen}|${snap.phase}|${snap.laneName}|${snap.walletOpen ? 1 : 0}|${snap.selected.join()}|${snap.theme}|${snap.canSabotage ? 1 : 0}|${snap.player}`}
+              view={`${snap.screen}|${snap.phase}|${snap.laneName}|${snap.selected.join()}|${snap.theme}|${snap.canSabotage ? 1 : 0}|${snap.player}`}
             />
           </Suspense>
         )}

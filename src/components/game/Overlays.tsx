@@ -65,7 +65,7 @@ function How({ game }: { game: WildAlleyGame }) {
         <h2 className="font-display text-2xl">House rules</h2>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted">
           <li>Walk the parlor with WASD. Click to look. Walk up and hit START on the machine (or Play). Q stands up; Sit puts you back at the table.</li>
-          <li>Open the <b>Wallet</b> and click tickets onto the table (two max). Then <b>Throw</b>. Hold W / Space or drag back, release to roll. A and D add english.</li>
+          <li>Look down at your lap or press E / Wallet. Tickets sit in the card slots — click one (two max). Then Throw or tap W. Hold W / Space or drag back, release to roll. A and D add english.</li>
           <li>Cups pay chips. Tickets build mult. Some cups dump you into plinko or pinball.</li>
           <li>Pass & Play: while their ball is live, open the wallet for sabotage.</li>
         </ul>
@@ -153,7 +153,7 @@ function AimHint({ snap }: { snap: Snapshot }) {
   if (snap.phase === "pick" || snap.phase === "intro") {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Wallet to pick tickets · Throw when ready · Q walks away
+        Wallet to pick tickets · look down at your lap · W throws · Q walks away
       </p>
     );
   }
@@ -178,17 +178,11 @@ function WalletTray({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   if (!snap.walletOpen) return null;
   const list = snap.canSabotage ? snap.sabotageHand : snap.hand;
   return (
-    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 bg-bg/80 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="mb-2 flex items-baseline justify-between gap-3">
-          <p className="font-display text-xl text-fg">Wallet</p>
-          <p className="text-xs text-muted">
-            {snap.canSabotage ? "Tear a sabotage ticket" : "Click a ticket · two max · 1–5"}
-          </p>
-          <button type="button" className="ticket px-3 py-1.5 text-sm" onClick={() => game.toggleWallet()}>
-            Close
-          </button>
-        </div>
+        <p className="mb-1 text-center text-xs text-muted [text-shadow:0_2px_0_#100c12]">
+          {snap.canSabotage ? "Tear a sabotage ticket" : "Click a ticket in the wallet · two max · 1–5"}
+        </p>
         {list.length === 0 ? (
           <p className="text-sm text-muted">Empty pockets.</p>
         ) : (

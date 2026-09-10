@@ -5,8 +5,8 @@ A first-person carnival skee-ball game. Walk the parlor, sit at the machine, rol
 ## Play
 
 - **Walk** the parlor with WASD (click to look). Press **START** on the machine, or **Play**.
-- **Wallet** opens your tickets. Click one (two max) to lay it on the table.
-- **Throw**, then hold **W / Space** or drag back and release. **A / D** add english.
+- Look **down** at your lap (or **E** / **Wallet**) for the bifold. Click a ticket (two max).
+- **Throw** or tap **W**, then hold **W / Space** or drag back and release. **A / D** add english.
 - **Walk** / **Q** stands you up. **Sit** puts you back at the table.
 
 ## Layout (for expanding)

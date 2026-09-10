@@ -99,7 +99,7 @@ export class AnimBus {
   }
 
   to(id: string, target: number, omega?: number, zeta?: number) {
-    const s = this.get(id, target, omega ?? 16, zeta ?? 0.86);
+    const s = this.get(id, 0, omega ?? 16, zeta ?? 0.86);
     setSpring(s, target, omega, zeta);
     return s;
   }

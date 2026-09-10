@@ -5,7 +5,7 @@ import type { RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { paintSign, retro, useArcadeTextures } from "@/game/retroMat";
-import { BALL_R3, CAB_FRONT, SPAWN, THROW_Z, boardOrigin, nearCabinet } from "@/game/layout3d";
+import { BALL_R3, BOARD_LEAN, CAB_FRONT, HEAD_H, SPAWN, THROW_Z, boardLocalToWorld, nearCabinet } from "@/game/layout3d";
 import { Room } from "./Room";
 import { LaneMachine } from "./LaneMachine";
 import { Wallet } from "./Wallet";
@@ -126,6 +126,9 @@ function BonusCabinet({ x, kind }: { x: number; kind: "plinko" | "pinball" }) {
   const face = retro("#2a2030");
   return (
     <group position={[x, 0, -1.25]}>
+      <mesh position={[0, 0.04, 0]} material={retro("#1a1010")}>
+        <boxGeometry args={[1.28, 0.08, 0.7]} />
+      </mesh>
       <mesh position={[0, 1.15, 0]} material={body}>
         <boxGeometry args={[1.15, 2.3, 0.55]} />
       </mesh>
@@ -214,11 +217,17 @@ function ScoreLamp({ game }: { game: WildAlleyGame }) {
     mat.emissiveMap = map;
     mat.needsUpdate = true;
   });
+  const p = boardLocalToWorld(0, HEAD_H + 0.08, 0.04);
   return (
-    <mesh ref={mesh} position={[0, boardOrigin().y + 1.22, boardOrigin().z + 0.06]}>
-      <planeGeometry args={[1.05, 0.24]} />
-      <meshLambertMaterial color="#efe6d4" emissive="#c47a3a" emissiveIntensity={0.55} />
-    </mesh>
+    <group position={[p.x, p.y, p.z]} rotation={[-BOARD_LEAN, 0, 0]}>
+      <mesh position={[0, 0, -0.04]} material={retro("#2a1410")}>
+        <boxGeometry args={[1.12, 0.3, 0.1]} />
+      </mesh>
+      <mesh ref={mesh} position={[0, 0, 0.02]}>
+        <planeGeometry args={[1.05, 0.24]} />
+        <meshLambertMaterial color="#efe6d4" emissive="#c47a3a" emissiveIntensity={0.55} />
+      </mesh>
+    </group>
   );
 }
 
@@ -227,6 +236,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
   const eHeld = useRef(false);
   const enterHeld = useRef(false);
   const qHeld = useRef(false);
+  const chargeLock = useRef(false);
   useEffect(() => {
     game.input.bind(gl.domElement);
     return () => game.input.unbind();
@@ -240,16 +250,21 @@ function Sim({ game }: { game: WildAlleyGame }) {
     }
     const s = game.session;
     const prev = s.phase;
+    const prevWallet = s.walletOpen;
     game.juice.step(dt);
     s.stepMeta(dt);
     if (s.paused) return;
 
-    game.input.blockLock = s.walletOpen;
-    if (s.walletOpen && document.pointerLockElement) document.exitPointerLock();
-
     const eNow = game.input.has("KeyE");
     if (eNow && !eHeld.current) game.toggleWallet();
     eHeld.current = eNow;
+
+    const lookingDown = s.lookPitch < -0.45 || (s.seated && game.input.down());
+    if (lookingDown) s.setLookWallet(true);
+    else if (s.lookPitch > -0.22) s.setLookWallet(false);
+
+    game.input.blockLock = s.walletOpen && s.walletPinned;
+    if (s.walletPinned && s.walletOpen && document.pointerLockElement) document.exitPointerLock();
 
     const qNow = game.input.has("KeyQ");
     if (qNow && !qHeld.current) {
@@ -288,7 +303,14 @@ function Sim({ game }: { game: WildAlleyGame }) {
 
     if (s.phase === "demo") s.tickDemo(dt);
 
-    if (s.phase === "aim" && !s.walletOpen && s.seated) {
+    const wantThrow = game.input.up();
+    if ((s.phase === "pick" || s.phase === "intro") && s.seated && !s.walletOpen && wantThrow && !chargeLock.current) {
+      game.ready();
+      chargeLock.current = true;
+    }
+    if (!wantThrow) chargeLock.current = false;
+
+    if (s.phase === "aim" && !s.walletOpen && s.seated && !chargeLock.current) {
       const steer = (game.input.left() ? -1 : 0) + (game.input.right() ? 1 : 0);
       s.aimX += steer * 0.55 * dt;
       s.aimX = Math.max(-s.lane.rail + 0.08, Math.min(s.lane.rail - 0.08, s.aimX));
@@ -356,7 +378,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
       game.onUi();
     }
 
-    if (prev !== s.phase) game.onUi();
+    if (prev !== s.phase || prevWallet !== s.walletOpen) game.onUi();
     game.uiClock += dt;
     if (game.uiClock > 0.1) {
       game.uiClock = 0;

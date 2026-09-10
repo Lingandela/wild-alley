@@ -19,15 +19,18 @@ function Blob({ x, z, s = 1 }: { x: number; z: number; s?: number }) {
 function Pendant({ position, color = "#f0d8a8" }: { position: [number, number, number]; color?: string }) {
   const glow = retro(color, { emissive: color, emissiveIntensity: 0.95 });
   const cord = retro("#2a2220");
+  const hang = PARLOR.ceil;
+  const lampY = hang - 0.72;
+  const cordLen = hang - lampY;
   return (
-    <group position={position}>
-      <mesh position={[0, 0.32, 0]} material={cord}>
-        <cylinderGeometry args={[0.012, 0.012, 0.62, 5]} />
+    <group position={[position[0], 0, position[2]]}>
+      <mesh position={[0, hang - cordLen / 2, 0]} material={cord}>
+        <cylinderGeometry args={[0.01, 0.01, cordLen, 5]} />
       </mesh>
-      <mesh position={[0, -0.08, 0]} material={glow}>
+      <mesh position={[0, lampY, 0]} material={glow}>
         <sphereGeometry args={[0.1, 6, 5]} />
       </mesh>
-      <mesh position={[0, -0.02, 0]} rotation={[Math.PI, 0, 0]} material={retro("#3a2a22")}>
+      <mesh position={[0, lampY + 0.06, 0]} rotation={[Math.PI, 0, 0]} material={retro("#3a2a22")}>
         <coneGeometry args={[0.13, 0.11, 6]} />
       </mesh>
     </group>
@@ -141,15 +144,21 @@ function Case({
 
 function NeonBanner({ title, position, w = 3.2, h = 0.62 }: { title: string; position: [number, number, number]; w?: number; h?: number }) {
   const mat = useMemo(() => retroSign("#efe6d4", { map: paintSign(title), emissive: "#c47a3a", emissiveIntensity: 0.85 }), [title]);
+  const board = retro("#2a1410");
   const t = useRef(0);
   useFrame((_, d) => {
     t.current += d;
     mat.emissiveIntensity = 0.72 + Math.sin(t.current * 6.4) * 0.14;
   });
   return (
-    <mesh position={position} material={mat}>
-      <planeGeometry args={[w, h]} />
-    </mesh>
+    <group position={position}>
+      <mesh position={[0, 0, -0.04]} material={board}>
+        <boxGeometry args={[w + 0.14, h + 0.14, 0.08]} />
+      </mesh>
+      <mesh position={[0, 0, 0.01]} material={mat}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+    </group>
   );
 }
 
@@ -165,7 +174,6 @@ export function Room({ tex }: { tex: ArcadeTextures }) {
   const prizes = useMemo(() => retroMapped(tex.prizes, "#ffffff"), [tex.prizes]);
   const prizes2 = useMemo(() => retroMapped(tex.prizes2, "#ffffff"), [tex.prizes2]);
   const prizes3 = useMemo(() => retroMapped(tex.prizes3, "#ffffff"), [tex.prizes3]);
-  const candy = useMemo(() => retroMapped(tex.candy, "#ffffff"), [tex.candy]);
   const food = useMemo(() => retroMapped(tex.food, "#ffffff"), [tex.food]);
   const mural = useMemo(() => retroMapped(tex.mural, "#ffffff"), [tex.mural]);
   const banner = useMemo(() => retroMapped(tex.banner, "#ffffff"), [tex.banner]);
@@ -193,7 +201,7 @@ export function Room({ tex }: { tex: ArcadeTextures }) {
         <CuboidCollider args={[W + 0.8, H / 2, 0.18]} position={[0, H / 2, zF + 0.12]} />
         <CuboidCollider args={[0.18, H / 2, spanZ / 2 + 0.4]} position={[W + 0.12, H / 2, midZ]} />
         <CuboidCollider args={[0.18, H / 2, spanZ / 2 + 0.4]} position={[-W - 0.12, H / 2, midZ]} />
-        <CuboidCollider args={[1.3, 0.7, 0.4]} position={[0, 0.7, zB + 0.7]} />
+        <CuboidCollider args={[1.3, 0.7, 0.4]} position={[0, 0.7, zB + 0.4]} />
         <CuboidCollider args={[0.36, 0.55, 0.28]} position={[4.2, 0.55, -1.6]} />
       </RigidBody>
 
@@ -222,8 +230,8 @@ export function Room({ tex }: { tex: ArcadeTextures }) {
         </mesh>
       ))}
 
-      {/* Window, framed, no spinning prop behind it. */}
-      <mesh position={[-W + 0.15, 1.95, -3.4]} material={windowMat}>
+      {/* Window flush on the left wall, facing into the room. */}
+      <mesh position={[-W + 0.16, 1.95, -3.4]} rotation={[0, Math.PI / 2, 0]} material={windowMat}>
         <planeGeometry args={[2.6, 1.7]} />
       </mesh>
       <mesh position={[-W + 0.14, 1.95, -3.4]} material={trim}>
@@ -233,16 +241,16 @@ export function Room({ tex }: { tex: ArcadeTextures }) {
         <boxGeometry args={[0.08, 1.86, 0.08]} />
       </mesh>
 
-      <Frame position={[-W + 0.16, 2.15, 0.55]} w={0.9} h={1.25} art={poster} />
-      <Frame position={[-W + 0.16, 2.05, 2.55]} w={0.85} h={1.2} art={hanging} />
-      <Frame position={[W - 0.16, 2.2, -4.2]} yaw={Math.PI} w={1.4} h={1.75} art={mural} />
-      <Frame position={[W - 0.16, 1.65, 1.6]} yaw={Math.PI} w={2.3} h={1.15} art={banner} />
-      <Frame position={[W - 0.16, 2.15, -1.2]} yaw={Math.PI} w={0.75} h={1.1} art={poster} />
+      <Frame position={[-W + 0.16, 2.15, 0.55]} yaw={Math.PI / 2} w={0.9} h={1.25} art={poster} />
+      <Frame position={[-W + 0.16, 2.05, 2.55]} yaw={Math.PI / 2} w={0.85} h={1.2} art={hanging} />
+      <Frame position={[W - 0.16, 2.2, -4.2]} yaw={-Math.PI / 2} w={1.4} h={1.75} art={mural} />
+      <Frame position={[W - 0.16, 1.65, 1.6]} yaw={-Math.PI / 2} w={2.3} h={1.15} art={banner} />
+      <Frame position={[W - 0.16, 2.15, -1.2]} yaw={-Math.PI / 2} w={0.75} h={1.1} art={poster} />
 
-      <NeonBanner title="WILD ALLEY" position={[0, H - 0.85, zB + 0.16]} />
-      <NeonBanner title="TICKETS" position={[3.1, H - 1.55, zB + 0.16]} w={1.5} h={0.38} />
+      <NeonBanner title="WILD ALLEY" position={[0, H - 0.85, zB + 0.02]} />
+      <NeonBanner title="TICKETS" position={[3.1, H - 1.55, zB + 0.02]} w={1.5} h={0.38} />
 
-      <group position={[0, 0, zB + 0.7]}>
+      <group position={[0, 0, zB + 0.4]}>
         <mesh position={[0, 0.7, 0]} material={dark}>
           <boxGeometry args={[2.5, 1.4, 0.75]} />
         </mesh>
@@ -266,12 +274,6 @@ export function Room({ tex }: { tex: ArcadeTextures }) {
       <Case position={[-4.3, 0, 4.7]} w={1.25} h={1.4} d={0.68} art={prizes3} cap={cherry} />
       <Case position={[4.15, 0, 2.1]} w={1.4} h={1.15} d={0.72} art={food} cap={trim} />
       <Case position={[-4.5, 0, -5.4]} w={0.95} h={1.7} d={0.7} art={claw} cap={cherry} />
-
-      <group position={[4.15, 0, 2.1]}>
-        <mesh position={[-0.78, 0.85, 0]} rotation={[0, Math.PI / 2, 0]} material={candy}>
-          <planeGeometry args={[0.55, 0.7]} />
-        </mesh>
-      </group>
 
       <group position={[4.2, 0, -1.6]}>
         <mesh position={[0, 0.55, 0]} material={cherry}>
@@ -327,14 +329,14 @@ export function Room({ tex }: { tex: ArcadeTextures }) {
         <boxGeometry args={[0.55, 0.44, 0.4]} />
       </mesh>
 
-      <Pendant position={[0, H - 0.55, 0.4]} />
-      <Pendant position={[-1.1, H - 0.55, -1.8]} color="#f0c090" />
-      <Pendant position={[1.1, H - 0.55, -1.8]} color="#f0c090" />
-      <Pendant position={[0, H - 0.55, -4.2]} />
-      <Pendant position={[-1.4, H - 0.55, -6.6]} color="#e8b070" />
-      <Pendant position={[1.4, H - 0.55, -6.6]} color="#e8b070" />
-      <Pendant position={[-2.4, H - 0.55, 2.4]} color="#f0d8a8" />
-      <Pendant position={[2.6, H - 0.55, 2.6]} color="#f0d8a8" />
+      <Pendant position={[0, H, 0.4]} />
+      <Pendant position={[-1.1, H, -1.8]} color="#f0c090" />
+      <Pendant position={[1.1, H, -1.8]} color="#f0c090" />
+      <Pendant position={[0, H, -4.2]} />
+      <Pendant position={[-1.4, H, -6.6]} color="#e8b070" />
+      <Pendant position={[1.4, H, -6.6]} color="#e8b070" />
+      <Pendant position={[-2.4, H, 2.4]} color="#f0d8a8" />
+      <Pendant position={[2.6, H, 2.6]} color="#f0d8a8" />
     </group>
   );
 }

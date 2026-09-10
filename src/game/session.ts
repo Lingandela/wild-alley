@@ -116,6 +116,8 @@ export class Session {
   hitQueue: HitEvent[] = [];
   laneEpoch = 0;
   walletOpen = false;
+  /** E / HUD pinned the wallet open so looking up does not auto-close it. */
+  walletPinned = false;
   justSank: number | "gutter" | null = null;
   playerX = SPAWN.x;
   playerZ = SPAWN.z;
@@ -143,6 +145,7 @@ export class Session {
     this.spawnIdleBall();
     this.message = "";
     this.walletOpen = false;
+    this.walletPinned = false;
     this.playerX = SPAWN.x;
     this.playerZ = SPAWN.z;
     this.lookYaw = 0;
@@ -245,7 +248,8 @@ export class Session {
     this.phaseT = 0;
     this.power = 0;
     this.walletOpen = false;
-    this.message = "Balls on the rail. E for the wallet.";
+    this.walletPinned = false;
+    this.message = "Balls on the rail. E for the wallet. Look down at your lap.";
     this.kickFx("lane", 0, this.lane.lipY);
   }
 
@@ -256,7 +260,7 @@ export class Session {
     this.playerZ = SEAT.z;
     this.lookYaw = 0;
     this.moveHeading = 0;
-    this.lookPitch = -0.16;
+    this.lookPitch = 0.08;
   }
 
   drawHand() {
@@ -291,6 +295,7 @@ export class Session {
     this.seated = false;
     this.seatLatch = false;
     this.walletOpen = false;
+    this.walletPinned = false;
     this.charging = false;
   }
 
@@ -308,6 +313,7 @@ export class Session {
     this.aimX = 0;
     if (this.balls.length === 0) this.balls = [makeBall(0, 0.12, BALL_R)];
     this.walletOpen = false;
+    this.walletPinned = false;
     this.message = "Pull back. W / Space or drag. Let go.";
   }
 
@@ -505,6 +511,7 @@ export class Session {
     this.phaseT = 0;
     this.charging = false;
     this.walletOpen = false;
+    this.walletPinned = false;
     this.power = p;
     this.chips = 0;
     this.bumperChips = 0;
@@ -774,6 +781,7 @@ export class Session {
       this.phase = "pick";
       this.phaseT = 0;
       this.walletOpen = false;
+      this.walletPinned = false;
       this.balls = [makeBall(0, 0.12, BALL_R)];
       this.message = `${this.names[this.player]} to throw`;
       return;
@@ -785,6 +793,7 @@ export class Session {
     this.phase = "pick";
     this.phaseT = 0;
     this.walletOpen = false;
+    this.walletPinned = false;
     this.balls = [makeBall(0, 0.12, BALL_R)];
     this.message = `${this.ballsLeft} ball${this.ballsLeft === 1 ? "" : "s"} left`;
   }
@@ -799,6 +808,7 @@ export class Session {
     this.phase = "pick";
     this.phaseT = 0;
     this.walletOpen = false;
+    this.walletPinned = false;
     this.balls = [makeBall(0, 0.12, BALL_R)];
   }
 
@@ -850,6 +860,7 @@ export class Session {
     this.screen = "results";
     this.phaseT = 0;
     this.walletOpen = false;
+    this.walletPinned = false;
     if (this.mode === "carnival" && this.scores[0]! > this.highScore) {
       this.highScore = this.scores[0]!;
     }
@@ -919,6 +930,21 @@ export class Session {
     if (this.paused) return;
     if (this.screen === "results" || this.screen === "how") return;
     this.walletOpen = !this.walletOpen;
+    this.walletPinned = this.walletOpen;
+  }
+
+  /** Look-down opens an unpinned wallet. Looking up closes it unless E-pinned. */
+  setLookWallet(open: boolean) {
+    if (this.paused) return;
+    if (this.screen === "results" || this.screen === "how") return;
+    if (open) {
+      if (!this.walletOpen) {
+        this.walletOpen = true;
+        this.walletPinned = false;
+      }
+      return;
+    }
+    if (this.walletOpen && !this.walletPinned) this.walletOpen = false;
   }
 
   yaw() {
@@ -927,7 +953,7 @@ export class Session {
 
   nudgeHeading(delta: number) {
     this.moveHeading += delta;
-    this.lookYaw += delta;
+    if (!this.seated) this.lookYaw += delta;
   }
 
   forceForward(v: number) {

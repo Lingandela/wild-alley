@@ -6,7 +6,7 @@ import type { KinematicCharacterController } from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { AnimBus } from "@/game/anim";
-import { COL, PARLOR, SEAT, SPAWN, seatEye, seatLook } from "@/game/layout3d";
+import { COL, PARLOR, SEAT, SPAWN, seatEye } from "@/game/layout3d";
 
 const EYE = 0.7;
 const WALK = 3.15;
@@ -23,7 +23,6 @@ export function Player({ game }: { game: WildAlleyGame }) {
   const lookDown = useRef(new AnimBus());
   const grounded = useRef(true);
   const wish = useRef({ x: 0, z: 0 });
-  const look = useRef(new THREE.Vector3(0, 1.7, -2.4));
   const wasSeated = useRef(false);
 
   useEffect(() => {
@@ -87,13 +86,20 @@ export function Player({ game }: { game: WildAlleyGame }) {
     s.pointerLocked = game.input.locked;
     const seated = s.seated && s.screen === "play" && s.phase !== "bonus";
 
-    if (!s.paused && !s.walletOpen && !seated) {
+    if (!s.paused) {
       const m = game.input.consumeLook();
       s.lookYaw -= m.x * SENS;
       s.lookPitch -= m.y * SENS;
-      const lim = Math.PI / 2 - 0.05;
-      if (s.lookPitch > lim) s.lookPitch = lim;
-      if (s.lookPitch < -lim) s.lookPitch = -lim;
+      if (seated) {
+        if (s.lookYaw > 0.62) s.lookYaw = 0.62;
+        if (s.lookYaw < -0.62) s.lookYaw = -0.62;
+        if (s.lookPitch > 0.34) s.lookPitch = 0.34;
+        if (s.lookPitch < -0.95) s.lookPitch = -0.95;
+      } else {
+        const lim = Math.PI / 2 - 0.05;
+        if (s.lookPitch > lim) s.lookPitch = lim;
+        if (s.lookPitch < -lim) s.lookPitch = -lim;
+      }
     } else {
       game.input.consumeLook();
     }
@@ -133,35 +139,24 @@ export function Player({ game }: { game: WildAlleyGame }) {
 
     if (seated) {
       const eye = seatEye();
-      const tgt = seatLook();
-      const charge = !s.walletOpen && s.charging ? s.power * 0.12 : 0;
-      const tx = eye.x + s.aimX * 0.08;
+      const charge = !s.walletOpen && s.charging ? s.power * 0.1 : 0;
+      const tx = eye.x + s.aimX * 0.06;
       const ty = eye.y;
       const tz = eye.z + charge;
-      const lx = tgt.x + s.aimX * 0.14;
-      const ly = tgt.y - down.value * 0.52;
-      const lz = tgt.z + down.value * 0.35;
       if (!wasSeated.current) {
         camera.position.set(tx, ty, tz);
-        look.current.set(lx, ly, lz);
         wasSeated.current = true;
       } else {
-        const ease = 1 - Math.exp(-8 * dt);
+        const ease = 1 - Math.exp(-9 * dt);
         camera.position.x += (tx - camera.position.x) * ease;
         camera.position.y += (ty - camera.position.y) * ease;
         camera.position.z += (tz - camera.position.z) * ease;
-        look.current.x += (lx - look.current.x) * ease;
-        look.current.y += (ly - look.current.y) * ease;
-        look.current.z += (lz - look.current.z) * ease;
       }
       camera.position.x += juice.x * 0.008;
       camera.position.y += juice.y * 0.006;
       camera.rotation.order = "YXZ";
-      const dx = look.current.x - camera.position.x;
-      const dy = look.current.y - camera.position.y;
-      const dz = look.current.z - camera.position.z;
-      camera.rotation.y = Math.atan2(-dx, -dz);
-      camera.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz));
+      camera.rotation.y = s.lookYaw;
+      camera.rotation.x = s.lookPitch - down.value * 0.12;
       camera.rotation.z = juice.rot * 0.35;
     } else if (s.phase === "bonus") {
       wasSeated.current = false;

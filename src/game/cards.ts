@@ -185,6 +185,7 @@ export const STARTER_IDS = [
   "superball",
   "magnet",
   "grease",
+  "splitter",
   "wide",
   "bumpers",
   "raise50",
@@ -195,7 +196,7 @@ export const STARTER_IDS = [
   "nest",
 ];
 
-export const PRIZE_IDS = ["splitter", "swap", "streak", "tax", "anchor", "rails"];
+export const PRIZE_IDS = ["swap", "streak", "tax", "anchor", "rails"];
 
 const ALL = [...BALL_CARDS, ...LANE_CARDS, ...SCORE_CARDS, ...SABOTAGE_CARDS];
 const BY_ID = new Map(ALL.map((c) => [c.id, c]));

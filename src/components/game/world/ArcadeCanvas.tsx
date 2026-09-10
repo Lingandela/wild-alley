@@ -11,6 +11,7 @@ import { LaneMachine } from "./LaneMachine";
 import { Wallet } from "./Wallet";
 import { Player } from "./Player";
 import { PlayBall } from "./PlayBall";
+import { AbilityFX } from "./AbilityFX";
 
 function LowRes() {
   const { gl } = useThree();
@@ -225,9 +226,27 @@ function Sim({ game }: { game: WildAlleyGame }) {
     s.stepMeta(dt);
     if (s.paused) return;
 
+    game.input.blockLock = s.walletOpen;
+    if (s.walletOpen && document.pointerLockElement) document.exitPointerLock();
+
     const eNow = game.input.has("KeyE");
     if (eNow && !eHeld.current) game.toggleWallet();
     eHeld.current = eNow;
+
+    if (s.walletOpen && (s.phase === "pick" || s.canSabotage())) {
+      for (let d = 0; d < 5; d++) {
+        const code = `Digit${d + 1}`;
+        if (game.input.has(code)) {
+          const list = s.canSabotage() ? s.sabotageHands[1 - s.player]! : s.hand;
+          const card = list[d];
+          if (card) {
+            if (s.canSabotage()) game.sabotage(card.uid);
+            else game.toggleCard(card.uid);
+          }
+          game.input.keys.delete(code);
+        }
+      }
+    }
 
     const enter = game.input.has("Enter");
     if (enter && !enterHeld.current) {
@@ -266,8 +285,10 @@ function Sim({ game }: { game: WildAlleyGame }) {
         s.aimX = Math.max(-s.lane.rail + 0.08, Math.min(s.lane.rail - 0.08, nx));
       } else if (s.charging && !game.input.pointerDown && !game.input.up()) {
         if (s.power > 0.14) {
+          const split = s.flags.split;
           s.launch(s.power, s.aimX * 0.22);
-          game.audio.whoosh(s.power);
+          if (split) game.audio.split();
+          else game.audio.whoosh(s.power);
           game.onUi();
         }
         s.charging = false;
@@ -277,7 +298,8 @@ function Sim({ game }: { game: WildAlleyGame }) {
         s.power = Math.min(1, s.power + dt * 0.95);
       } else if (s.charging && s.power > 0.1 && !game.input.pointerDown) {
         s.launch(s.power, s.aimX * 0.25);
-        game.audio.whoosh(s.power);
+        if (s.flags.split) game.audio.split();
+        else game.audio.whoosh(s.power);
         game.onUi();
         s.charging = false;
       }
@@ -323,7 +345,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
 function Scene({ game }: { game: WildAlleyGame }) {
   const tex = useArcadeTextures();
   const [tick, setTick] = useState(0);
-  const last = useRef({ epoch: -1, screen: "", wallet: false, sel: "" });
+  const last = useRef({ epoch: -1, screen: "", wallet: false, sel: "", phase: "", fx: "" });
   useFrame(() => {
     const s = game.session;
     const sel = s.selected.join();
@@ -331,9 +353,11 @@ function Scene({ game }: { game: WildAlleyGame }) {
       s.laneEpoch !== last.current.epoch ||
       s.screen !== last.current.screen ||
       s.walletOpen !== last.current.wallet ||
-      sel !== last.current.sel
+      sel !== last.current.sel ||
+      s.phase !== last.current.phase ||
+      s.fxName !== last.current.fx
     ) {
-      last.current = { epoch: s.laneEpoch, screen: s.screen, wallet: s.walletOpen, sel };
+      last.current = { epoch: s.laneEpoch, screen: s.screen, wallet: s.walletOpen, sel, phase: s.phase, fx: s.fxName };
       setTick((n) => n + 1);
     }
   });
@@ -353,11 +377,12 @@ function Scene({ game }: { game: WildAlleyGame }) {
         <LaneMachine lane={lane} tex={tex} game={game} />
       </group>
       <PlayBall game={game} />
+      <AbilityFX game={game} />
       <BonusPlay game={game} />
       <CabinetPlates game={game} />
       <ScoreLamp game={game} />
       <Player game={game} />
-      <Wallet game={game} />
+      <Wallet game={game} leather={tex.leather} suede={tex.suede} />
       <Sim game={game} />
     </>
   );

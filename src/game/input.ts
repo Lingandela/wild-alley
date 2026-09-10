@@ -12,6 +12,11 @@ const GAME_KEYS = new Set([
   "Escape",
   "Enter",
   "KeyF",
+  "Digit1",
+  "Digit2",
+  "Digit3",
+  "Digit4",
+  "Digit5",
 ]);
 
 export class Input {
@@ -26,6 +31,8 @@ export class Input {
   moveY = 0;
   locked = false;
   canvas: HTMLCanvasElement | null = null;
+  /** When true, canvas clicks do not grab pointer lock (open wallet). */
+  blockLock = false;
   private unbinders: Array<() => void> = [];
 
   has(code: string) {
@@ -116,6 +123,7 @@ export class Input {
       this.locked = document.pointerLockElement === canvas;
     };
     const clickLock = () => {
+      if (this.blockLock) return;
       if (document.pointerLockElement === canvas) return;
       const req = canvas.requestPointerLock as (opts?: { unadjustedMovement?: boolean }) => Promise<void> | void;
       try {

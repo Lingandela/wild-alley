@@ -32,9 +32,53 @@ import {
   xWorld,
 } from "@/game/layout3d";
 import type { LaneDef } from "@/game/types";
+import { easeOutBack } from "@/game/anim";
 
 const STATIC = interactionGroups([COL.static], [COL.player, COL.static]);
 const WOOD = { friction: 0.55, restitution: 0.08 };
+
+function PopIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const t = useRef(-delay);
+  useFrame((_, dt) => {
+    t.current += dt;
+    const u = Math.max(0, Math.min(1, t.current / 0.38));
+    const s = u <= 0 ? 0 : easeOutBack(u);
+    if (ref.current) {
+      ref.current.scale.setScalar(s);
+      ref.current.visible = u > 0.02;
+    }
+  });
+  return (
+    <group ref={ref} scale={0} visible={false}>
+      {children}
+    </group>
+  );
+}
+
+function DropCrate({ x, y, z, w, hh, d }: { x: number; y: number; z: number; w: number; hh: number; d: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const t = useRef(0);
+  useFrame((_, dt) => {
+    t.current += dt;
+    const u = Math.min(1, t.current / 0.45);
+    const drop = (1 - u) * (1 - u);
+    if (ref.current) {
+      ref.current.position.y = y + drop * 0.55;
+      ref.current.rotation.x = (1 - u) * 0.4;
+    }
+  });
+  return (
+    <group ref={ref} position={[x, y + 0.55, z]}>
+      <mesh material={retro("#6a4430")}>
+        <boxGeometry args={[w, hh, d]} />
+      </mesh>
+      <mesh position={[0, hh * 0.52, 0]} material={retro("#c47a3a", { emissive: "#c47a3a", emissiveIntensity: 0.4 })}>
+        <boxGeometry args={[w * 0.7, 0.012, d * 0.7]} />
+      </mesh>
+    </group>
+  );
+}
 
 function Cup({ lane, index }: { lane: LaneDef; index: number }) {
   const h = lane.holes[index]!;
@@ -315,12 +359,14 @@ export function LaneMachine({
         const w = bumperWorld(lane, b);
         const col = i % 2 ? "#c47a3a" : "#c45c48";
         return (
-          <RigidBody key={`b${i}`} type="fixed" colliders={false} position={[w.x, w.y, w.z]} collisionGroups={STATIC} onCollisionEnter={bumpHit}>
-            <CylinderCollider args={[0.1, w.r]} />
-            <mesh material={retro(col, { emissive: col, emissiveIntensity: 0.5 })}>
-              <cylinderGeometry args={[w.r, w.r, 0.2, 8]} />
-            </mesh>
-          </RigidBody>
+          <PopIn key={`b${i}`} delay={i * 0.06}>
+            <RigidBody type="fixed" colliders={false} position={[w.x, w.y, w.z]} collisionGroups={STATIC} onCollisionEnter={bumpHit}>
+              <CylinderCollider args={[0.1, w.r]} />
+              <mesh material={retro(col, { emissive: col, emissiveIntensity: 0.5 })}>
+                <cylinderGeometry args={[w.r, w.r, 0.2, 8]} />
+              </mesh>
+            </RigidBody>
+          </PopIn>
         );
       })}
       {lane.pegs.map((p, i) => {
@@ -334,9 +380,7 @@ export function LaneMachine({
       {lane.crates.map((c, i) => {
         const w = crateWorld(lane, c);
         return (
-          <mesh key={`c${i}`} position={[w.x, w.y, w.z]} material={retro("#6a4430")}>
-            <boxGeometry args={[w.w, w.hh, w.d]} />
-          </mesh>
+          <DropCrate key={`c${i}`} x={w.x} y={w.y} z={w.z} w={w.w} hh={w.hh} d={w.d} />
         );
       })}
       {lane.spinners.map((_, i) => (

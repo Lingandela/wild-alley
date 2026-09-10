@@ -61,7 +61,7 @@ function How({ game }: { game: WildAlleyGame }) {
         <h2 className="font-display text-2xl">House rules</h2>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted">
           <li>Start Carnival sits you at the machine. Hold W / Space or drag back, then let go — the ball rolls up the ramp into the cups. A and D add english.</li>
-          <li>E looks down at a bifold wallet. Tickets sit in the card slots. Hover to slide one up. Click to tear it.</li>
+          <li>E looks down at a bifold wallet. Tickets live in the credit-card slots. Hover to slide one out. Click (or 1–5) to tear it.</li>
           <li>You can walk the parlor from the menu. WASD, click to look. The wood and the cups are the game.</li>
           <li>Cups pay chips. Tickets build mult. Some cups dump you into plinko or pinball.</li>
           <li>Pass & Play: while their ball is live, open the wallet for sabotage.</li>
@@ -125,7 +125,7 @@ function AimHint({ snap }: { snap: Snapshot }) {
   if (snap.walletOpen) {
     return (
       <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Tear a ticket from a slot · E closes
+        Tear a ticket from a slot · 1–5 or click · E closes
       </p>
     );
   }

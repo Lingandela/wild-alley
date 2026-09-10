@@ -131,25 +131,28 @@ export function Player({ game }: { game: WildAlleyGame }) {
     const down = lookDown.current.to("down", s.walletOpen ? 1 : 0, 14, 0.82);
     lookDown.current.tick("down", dt);
 
-    if (seated && !s.walletOpen) {
+    if (seated) {
       const eye = seatEye();
       const tgt = seatLook();
-      const charge = s.charging ? s.power * 0.14 : 0;
+      const charge = !s.walletOpen && s.charging ? s.power * 0.14 : 0;
       const tx = eye.x + s.aimX * 0.1;
       const ty = eye.y;
       const tz = eye.z + charge;
+      const lx = tgt.x + s.aimX * 0.16;
+      const ly = tgt.y - down.value * 0.12;
+      const lz = tgt.z;
       if (!wasSeated.current) {
         camera.position.set(tx, ty, tz);
-        look.current.set(tgt.x + s.aimX * 0.16, tgt.y, tgt.z);
+        look.current.set(lx, ly, lz);
         wasSeated.current = true;
       } else {
-        const k = 1 - Math.exp(-7 * dt);
-        camera.position.x += (tx - camera.position.x) * k;
-        camera.position.y += (ty - camera.position.y) * k;
-        camera.position.z += (tz - camera.position.z) * k;
-        look.current.x += (tgt.x + s.aimX * 0.16 - look.current.x) * k;
-        look.current.y += (tgt.y - look.current.y) * k;
-        look.current.z += (tgt.z - look.current.z) * k;
+        const ease = 1 - Math.exp(-7 * dt);
+        camera.position.x += (tx - camera.position.x) * ease;
+        camera.position.y += (ty - camera.position.y) * ease;
+        camera.position.z += (tz - camera.position.z) * ease;
+        look.current.x += (lx - look.current.x) * ease;
+        look.current.y += (ly - look.current.y) * ease;
+        look.current.z += (lz - look.current.z) * ease;
       }
       camera.lookAt(look.current);
       camera.position.x += juice.x * 0.008;
@@ -165,7 +168,7 @@ export function Player({ game }: { game: WildAlleyGame }) {
       camera.lookAt(side, 1.4, -1.3);
     } else {
       wasSeated.current = false;
-      const pitch = s.lookPitch - down.value * 1.05;
+      const pitch = s.lookPitch - down.value * 0.38;
       const traveling = grounded.current ? spd : 0;
       const bobAmt = bob.current.to("amp", traveling > 0.4 ? 1 : 0, 10, 0.8);
       bob.current.tick("amp", dt);

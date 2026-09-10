@@ -101,6 +101,8 @@ export type ArcadeTextures = {
   claw: THREE.Texture;
   hanging: THREE.Texture;
   cabinet: THREE.Texture;
+  leather: THREE.Texture;
+  suede: THREE.Texture;
 };
 
 export function useArcadeTextures(): ArcadeTextures {
@@ -121,6 +123,8 @@ export function useArcadeTextures(): ArcadeTextures {
     claw: "/tex/claw.jpg",
     hanging: "/tex/hanging.jpg",
     cabinet: "/tex/cabinet.jpg",
+    leather: "/tex/leather.jpg",
+    suede: "/tex/suede.jpg",
   });
   useLayoutEffect(() => {
     crunch(t.wood, 128);
@@ -139,6 +143,8 @@ export function useArcadeTextures(): ArcadeTextures {
     crunch(t.claw, 256);
     crunch(t.hanging, 320);
     crunch(t.cabinet, 192);
+    crunch(t.leather, 256);
+    crunch(t.suede, 256);
     t.wood.wrapS = t.wood.wrapT = THREE.RepeatWrapping;
     t.wood.repeat.set(1.6, 7);
     t.wall.wrapS = t.wall.wrapT = THREE.RepeatWrapping;
@@ -274,6 +280,206 @@ export function paintTearTicket(name: string, type: string, text: string, select
   const tex = new THREE.CanvasTexture(c);
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  signCache.set(key, tex);
+  return tex;
+}
+
+const TYPE_FACE: Record<string, { bg: string; ink: string; band: string }> = {
+  ball: { bg: "#3d2a1c", ink: "#efe6d4", band: "#c47a3a" },
+  lane: { bg: "#5a1c1c", ink: "#efe6d4", band: "#c45c48" },
+  score: { bg: "#4a3010", ink: "#ffe6b0", band: "#d4a04a" },
+  sabotage: { bg: "#1c1014", ink: "#f0c8c0", band: "#c45c48" },
+};
+
+/** Landscape plastic card that sits in a bifold slot (ISO ID-1 ratio). */
+export function paintWalletCard(name: string, type: string, text: string, selected = false) {
+  const key = `wcard|${name}|${type}|${text}|${selected}`;
+  const hit = signCache.get(key);
+  if (hit) return hit;
+  const w = 512;
+  const h = 324;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  const pal = TYPE_FACE[type] ?? TYPE_FACE.ball!;
+  g.fillStyle = pal.bg;
+  g.fillRect(0, 0, w, h);
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, "rgba(255,230,180,0.14)");
+  grd.addColorStop(0.45, "rgba(0,0,0,0)");
+  grd.addColorStop(1, "rgba(0,0,0,0.28)");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, w, h);
+
+  g.fillStyle = pal.band;
+  g.fillRect(0, 0, w, 72);
+  g.fillStyle = pal.ink;
+  g.font = "700 15px Georgia, serif";
+  g.textAlign = "left";
+  g.textBaseline = "middle";
+  g.fillText("WILD ALLEY", 22, 24);
+  g.font = "700 11px ui-monospace, monospace";
+  g.fillText(type.toUpperCase(), 22, 50);
+  g.textAlign = "right";
+  g.font = "700 13px Georgia, serif";
+  g.fillText(selected ? "ACTIVE" : "TEAR TO PLAY", w - 22, 36);
+
+  g.fillStyle = "#d4b060";
+  g.fillRect(28, 98, 64, 50);
+  g.fillStyle = "#8a6a28";
+  g.fillRect(34, 104, 52, 16);
+  g.fillRect(34, 126, 28, 16);
+  g.fillStyle = "#1a1010";
+  g.fillRect(0, 168, w, 28);
+
+  g.fillStyle = pal.ink;
+  g.textAlign = "left";
+  g.font = "700 36px Georgia, serif";
+  g.fillText(name.toUpperCase().slice(0, 18), 22, 232);
+
+  g.fillStyle = "rgba(239,230,212,0.75)";
+  g.font = "14px Georgia, serif";
+  const bits = text.split(" ");
+  let line = "";
+  let ty = 268;
+  let lines = 0;
+  for (const bit of bits) {
+    const next = line ? `${line} ${bit}` : bit;
+    if (g.measureText(next).width > 360) {
+      g.fillText(line, 22, ty);
+      line = bit;
+      ty += 18;
+      lines += 1;
+      if (lines >= 2) break;
+    } else line = next;
+  }
+  if (line && lines < 2) g.fillText(line, 22, ty);
+
+  g.fillStyle = "#d4b060";
+  g.fillRect(w - 78, 92, 52, 52);
+  g.strokeStyle = "#efe6d4";
+  g.lineWidth = 3;
+  g.beginPath();
+  g.arc(w - 52, 118, 16, 0, Math.PI * 2);
+  g.stroke();
+  g.font = "700 11px ui-monospace, monospace";
+  g.fillStyle = "#8a6a48";
+  g.textAlign = "right";
+  g.fillText(`•••• ${String(name.length * 17 + 4200).slice(-4)}`, w - 22, h - 22);
+
+  if (selected) {
+    g.strokeStyle = "#c47a3a";
+    g.lineWidth = 10;
+    g.strokeRect(6, 6, w - 12, h - 12);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  signCache.set(key, tex);
+  return tex;
+}
+
+export function paintIdCard(holder: string) {
+  const key = `id|${holder}`;
+  const hit = signCache.get(key);
+  if (hit) return hit;
+  const w = 512;
+  const h = 324;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#efe6d4";
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = "#7a1c18";
+  g.fillRect(0, 0, w, 58);
+  g.fillStyle = "#efe6d4";
+  g.font = "700 18px Georgia, serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText("WILD ALLEY  ·  SEASON PASS", w / 2, 30);
+
+  g.fillStyle = "#c45c48";
+  g.fillRect(24, 78, 140, 168);
+  g.fillStyle = "#2a1810";
+  g.fillRect(32, 86, 124, 152);
+  g.fillStyle = "#c47a3a";
+  g.beginPath();
+  g.arc(94, 148, 28, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#efe6d4";
+  g.fillRect(62, 176, 64, 48);
+  g.fillStyle = "#c47a3a";
+  g.fillRect(70, 128, 48, 10);
+
+  g.fillStyle = "#2a1810";
+  g.textAlign = "left";
+  g.font = "700 13px Georgia, serif";
+  g.fillText("MEMBER", 184, 96);
+  g.font = "700 32px Georgia, serif";
+  g.fillText(holder.toUpperCase().slice(0, 14), 184, 138);
+  g.font = "14px Georgia, serif";
+  g.fillStyle = "#6a4a38";
+  g.fillText("Unlimited skee  ·  parlor access", 184, 176);
+  g.fillText("Not valid at the claw", 184, 198);
+  g.font = "700 12px ui-monospace, monospace";
+  g.fillStyle = "#8a6a48";
+  g.fillText("NO. 19  08  26", 184, 232);
+  g.fillStyle = "#7a1c18";
+  g.fillRect(0, h - 28, w, 28);
+  g.fillStyle = "#efe6d4";
+  g.font = "700 11px Georgia, serif";
+  g.textAlign = "center";
+  g.fillText("IF FOUND RETURN TO THE TICKET BOOTH", w / 2, h - 14);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  signCache.set(key, tex);
+  return tex;
+}
+
+export function paintBill(kind: 1 | 5 | 10) {
+  const key = `bill|${kind}`;
+  const hit = signCache.get(key);
+  if (hit) return hit;
+  const w = 512;
+  const h = 220;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  g.fillStyle = kind === 10 ? "#d8c070" : kind === 5 ? "#8aaf7a" : "#d8c8a0";
+  g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#2a1810";
+  g.lineWidth = 8;
+  g.strokeRect(10, 10, w - 20, h - 20);
+  g.strokeStyle = "#5a3a20";
+  g.lineWidth = 2;
+  g.strokeRect(22, 22, w - 44, h - 44);
+  g.fillStyle = "#2a1810";
+  g.font = "700 64px Georgia, serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(String(kind), w / 2, h / 2 - 8);
+  g.font = "700 16px Georgia, serif";
+  g.fillText("ALLEY SCRIP", w / 2, 44);
+  g.font = "12px Georgia, serif";
+  g.fillText("GOOD FOR TICKETS AND CORN DOGS", w / 2, h - 40);
+  g.font = "700 28px Georgia, serif";
+  g.textAlign = "left";
+  g.fillText(String(kind), 36, h / 2);
+  g.textAlign = "right";
+  g.fillText(String(kind), w - 36, h / 2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
   signCache.set(key, tex);
   return tex;

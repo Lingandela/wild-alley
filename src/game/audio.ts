@@ -80,6 +80,18 @@ export class AudioBus {
     this.tone(180 + power * 90, 0.18, "sine", 0.08);
   }
 
+  split() {
+    this.whoosh(0.65);
+    this.tone(420, 0.12, "triangle", 0.07);
+    this.tone(260, 0.18, "sine", 0.05);
+    this.noise(0.1, 0.08, 700);
+  }
+
+  magnet() {
+    this.tone(880, 0.08, "sine", 0.03);
+    this.tone(1320, 0.14, "sine", 0.02);
+  }
+
   wood(mag: number) {
     this.tone(90 + mag * 40, 0.12, "sine", 0.1);
     this.noise(0.08, 0.08, 200);

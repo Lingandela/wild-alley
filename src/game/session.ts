@@ -118,6 +118,10 @@ export class Session {
   pointerLocked = false;
   seated = false;
   seatLatch = false;
+  fxName = "";
+  fxT = 0;
+  fxX = 0;
+  fxY = 0.12;
 
   constructor() {
     this.bootDemo();
@@ -186,6 +190,15 @@ export class Session {
     this.discard = [];
     this.hand = [];
     this.drawHand();
+    if (!this.hand.some((c) => c.effect === "split")) {
+      const i = this.deck.findIndex((c) => c.effect === "split");
+      if (i >= 0) {
+        const take = this.deck.splice(i, 1)[0]!;
+        const drop = this.hand.pop();
+        this.hand.unshift(take);
+        if (drop) this.deck.push(drop);
+      }
+    }
     this.lastThrowScore = 0;
     this.seatAtTable();
     this.beginLane(0);
@@ -222,11 +235,12 @@ export class Session {
     this.sabotageUsed = false;
     this.houseCheat = false;
     this.phase = "intro";
-    this.introT = 0.55;
+    this.introT = 0.7;
     this.phaseT = 0;
     this.power = 0;
     this.walletOpen = false;
     this.message = this.lane.blurb;
+    this.kickFx("lane", 0, this.lane.lipY);
   }
 
   seatAtTable() {
@@ -261,6 +275,7 @@ export class Session {
     if (this.selected.length >= MAX_PLAY) return;
     if (!this.hand.some((c) => c.uid === uid)) return;
     this.selected.push(uid);
+    this.kickFx(this.hand.find((c) => c.uid === uid)?.effect ?? "card");
   }
 
   readyThrow() {
@@ -288,6 +303,10 @@ export class Session {
       if (card) this.applyEffect(card.effect, false);
     }
     this.rebuildWorld();
+    const lead = this.selected
+      .map((uid) => this.hand.find((c) => c.uid === uid))
+      .find(Boolean);
+    if (lead) this.kickFx(lead.effect);
   }
 
   applyEffect(effect: string, sabotage: boolean) {
@@ -392,7 +411,38 @@ export class Session {
       default:
         break;
     }
-    if (sabotage) this.rebuildWorld();
+    if (sabotage) {
+      this.rebuildWorld();
+      this.kickFx(effect);
+    }
+  }
+
+  kickFx(name: string, x?: number, y?: number) {
+    this.fxName = name;
+    this.fxT = 1;
+    this.fxX = x ?? this.aimX;
+    this.fxY = y ?? 0.12;
+  }
+
+  wants(effect: string): boolean {
+    const f = this.flags;
+    const flagged: Record<string, boolean> = {
+      magnet: f.magnet,
+      heavy: f.heavy,
+      superball: f.superball,
+      split: f.split,
+      grease: f.grease,
+      anchor: f.anchor,
+      tailwind: f.tailwind,
+      lucky: f.lucky,
+      nest: f.nest,
+      streak: f.streak,
+      tax: f.tax,
+      crossbreeze: f.crossbreeze,
+      gravityWell: f.gravityWell,
+    };
+    if (flagged[effect]) return true;
+    return this.selected.some((uid) => this.hand.find((c) => c.uid === uid)?.effect === effect);
   }
 
   playSabotage(uid: string) {
@@ -404,6 +454,7 @@ export class Session {
     this.sabotageHands[1 - this.player] = hand.filter((c) => c.uid !== uid);
     this.sabotageUsed = true;
     this.flashMsg(`${card.name}!`);
+    this.kickFx(card.effect);
   }
 
   canSabotage() {
@@ -429,6 +480,10 @@ export class Session {
       twin.vy = ball.vy * 0.96;
       twin.superSkip = this.flags.superball;
       this.balls.push(twin);
+      this.kickFx("split", this.aimX, 0.12);
+      this.flashMsg("SPLITTER");
+    } else {
+      this.kickFx(this.flags.heavy ? "heavy" : this.flags.magnet ? "magnet" : "throw", this.aimX, 0.12);
     }
     this.phase = "roll";
     this.phaseT = 0;
@@ -622,13 +677,15 @@ export class Session {
     this.phaseT += dt;
     if (this.flashT > 0) this.flashT -= dt;
     if (this.flashT <= 0) this.flash = "";
+    if (this.fxT > 0) this.fxT = Math.max(0, this.fxT - dt * 0.9);
     for (const sp of this.lane.spinners) sp.angle += sp.omega * dt;
     if (this.paused) return;
     if (this.phase === "intro") {
       this.introT -= dt;
       if (this.introT <= 0) {
-        this.readyThrow();
-        this.message = "Pull back. W / Space or drag. Let go.";
+        this.phase = "pick";
+        this.phaseT = 0;
+        this.message = "E — tickets in the wallet, then sling.";
       }
     }
     if (this.phase === "tally" && this.phaseT > 2.6) this.afterTally();

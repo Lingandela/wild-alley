@@ -134,12 +134,12 @@ export function crateWorld(lane: LaneDef, c: { x: number; y: number; w: number; 
 }
 
 export function seatEye() {
-  return { x: 0, y: 1.42, z: THROW_Z + 0.78 };
+  return { x: 0, y: 1.48, z: THROW_Z + 0.95 };
 }
 
 export function seatLook() {
   const o = boardOrigin();
-  return { x: 0, y: o.y + FACE_CY * 0.55, z: o.z + 0.28 };
+  return { x: 0, y: o.y + FACE_CY * 0.42, z: o.z + 0.18 };
 }
 
 export function themeFelt(theme: LaneDef["theme"]) {

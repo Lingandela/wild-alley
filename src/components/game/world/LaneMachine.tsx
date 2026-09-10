@@ -102,8 +102,8 @@ function Cup({ lane, index }: { lane: LaneDef; index: number }) {
         <mesh position={[0, 0, 0.008]} material={rim}>
           <ringGeometry args={[w.r * 0.78, w.r * 1.12, 14]} />
         </mesh>
-        <mesh position={[0, -w.r - 0.055, 0.02]} material={label}>
-          <planeGeometry args={[Math.max(0.16, w.r * 1.15), 0.07]} />
+        <mesh position={[0, -w.r * 0.15, 0.012]} material={label}>
+          <planeGeometry args={[w.r * 1.05, w.r * 0.42]} />
         </mesh>
       </group>
     );

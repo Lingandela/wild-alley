@@ -1,4 +1,4 @@
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { memo, Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Physics, RigidBody, CuboidCollider, BallCollider } from "@react-three/rapier";
 import type { RapierRigidBody } from "@react-three/rapier";
@@ -342,38 +342,22 @@ function Sim({ game }: { game: WildAlleyGame }) {
   return null;
 }
 
-function Scene({ game }: { game: WildAlleyGame }) {
+function Scene({ game, view }: { game: WildAlleyGame; view: string }) {
   const tex = useArcadeTextures();
-  const [tick, setTick] = useState(0);
-  const last = useRef({ epoch: -1, screen: "", wallet: false, sel: "", phase: "", fx: "" });
-  useFrame(() => {
-    const s = game.session;
-    const sel = s.selected.join();
-    if (
-      s.laneEpoch !== last.current.epoch ||
-      s.screen !== last.current.screen ||
-      s.walletOpen !== last.current.wallet ||
-      sel !== last.current.sel ||
-      s.phase !== last.current.phase ||
-      s.fxName !== last.current.fx
-    ) {
-      last.current = { epoch: s.laneEpoch, screen: s.screen, wallet: s.walletOpen, sel, phase: s.phase, fx: s.fxName };
-      setTick((n) => n + 1);
-    }
-  });
-  void tick;
+  void view;
   const lane = game.session.lane;
   return (
     <>
       <LowRes />
       <color attach="background" args={["#1a100e"]} />
       <fog attach="fog" args={["#1a100e", 14, 26]} />
-      <ambientLight intensity={0.36} color="#e4d0b4" />
-      <hemisphereLight args={["#6a5868", "#241610", 0.38]} />
-      <spotLight position={[0, 3.05, 0.4]} angle={0.48} penumbra={0.62} intensity={42} distance={16} color="#ffe6c0" />
-      <spotLight position={[0, 2.7, -3.0]} angle={0.46} penumbra={0.5} intensity={36} distance={11} color="#ffd090" />
+      <ambientLight intensity={0.42} color="#e4d0b4" />
+      <hemisphereLight args={["#6a5868", "#241610", 0.42]} />
+      <spotLight position={[0, 3.05, 0.4]} angle={0.5} penumbra={0.62} intensity={48} distance={16} color="#ffe6c0" />
+      <spotLight position={[0, 2.7, -3.0]} angle={0.48} penumbra={0.5} intensity={40} distance={11} color="#ffd090" />
+      <spotLight position={[0, 2.2, 2.2]} angle={0.55} penumbra={0.7} intensity={18} distance={8} color="#ffd8b0" />
       <Room tex={tex} />
-      <group key={`${lane.id}-${game.session.laneEpoch}`}>
+      <group key={lane.id}>
         <LaneMachine lane={lane} tex={tex} game={game} />
       </group>
       <PlayBall game={game} />
@@ -388,7 +372,7 @@ function Scene({ game }: { game: WildAlleyGame }) {
   );
 }
 
-export const ArcadeCanvas = memo(function ArcadeCanvas({ game }: { game: WildAlleyGame }) {
+export const ArcadeCanvas = memo(function ArcadeCanvas({ game, view }: { game: WildAlleyGame; view: string }) {
   return (
     <Canvas
       dpr={1}
@@ -399,12 +383,23 @@ export const ArcadeCanvas = memo(function ArcadeCanvas({ game }: { game: WildAll
       onCreated={({ gl, camera }) => {
         gl.setPixelRatio(1);
         gl.toneMapping = THREE.NoToneMapping;
+        gl.setClearColor("#1a100e", 1);
+        camera.near = 0.08;
+        camera.far = 36;
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = 64;
+          camera.updateProjectionMatrix();
+        }
         camera.lookAt(0, 1.05, -3.2);
+        const canvas = gl.domElement;
+        const onLost = (e: Event) => e.preventDefault();
+        canvas.addEventListener("webglcontextlost", onLost, false);
       }}
     >
       <Suspense fallback={null}>
+        <color attach="background" args={["#1a100e"]} />
         <Physics gravity={[0, -16, 0]} timeStep={1 / 60} interpolate>
-          <Scene game={game} />
+          <Scene game={game} view={view} />
         </Physics>
       </Suspense>
     </Canvas>

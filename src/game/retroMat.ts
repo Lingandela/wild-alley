@@ -4,6 +4,13 @@ import * as THREE from "three";
 
 const cache = new Map<string, THREE.MeshLambertMaterial>();
 
+/** Shared materials must outlive any one mesh — R3F dispose() on unmount would black the parlor. */
+function immortal<T extends THREE.Material>(m: T): T {
+  m.userData.immortal = true;
+  m.dispose = () => {};
+  return m;
+}
+
 function snapify(mat: THREE.MeshLambertMaterial, grid = 112) {
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader.replace(
@@ -33,6 +40,7 @@ export function retro(
     side: extras?.side ?? THREE.FrontSide,
   });
   snapify(m);
+  immortal(m);
   cache.set(key, m);
   return m;
 }
@@ -50,18 +58,20 @@ export function retroMapped(
     emissiveIntensity: extras?.emissiveIntensity ?? 0,
   });
   if (extras?.snap !== false) snapify(m);
-  return m;
+  return immortal(m);
 }
 
 export function retroSign(color: string, extras?: { emissive?: string; emissiveIntensity?: number; map?: THREE.Texture }) {
-  return new THREE.MeshLambertMaterial({
-    color,
-    flatShading: true,
-    map: extras?.map,
-    emissive: extras?.emissive ?? "#000000",
-    emissiveMap: extras?.map,
-    emissiveIntensity: extras?.emissiveIntensity ?? 0,
-  });
+  return immortal(
+    new THREE.MeshLambertMaterial({
+      color,
+      flatShading: true,
+      map: extras?.map,
+      emissive: extras?.emissive ?? "#000000",
+      emissiveMap: extras?.map,
+      emissiveIntensity: extras?.emissiveIntensity ?? 0,
+    }),
+  );
 }
 
 export function crunch(tex: THREE.Texture, max = 160) {

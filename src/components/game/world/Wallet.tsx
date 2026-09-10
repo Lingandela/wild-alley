@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Hud, PerspectiveCamera } from "@react-three/drei";
+import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import type { UiCard } from "@/game/types";
@@ -18,7 +17,15 @@ function overlay(mat: THREE.MeshLambertMaterial) {
   const m = mat.clone();
   m.depthTest = false;
   m.depthWrite = false;
+  m.emissive.copy(m.color);
+  m.emissiveIntensity = Math.max(m.emissiveIntensity, 0.55);
   return m;
+}
+
+/** Parent the bifold to the game camera so it never steals the renderer. */
+function WalletLayer({ children }: { children: React.ReactNode }) {
+  const { camera } = useThree();
+  return createPortal(children, camera);
 }
 
 function SlotCard({
@@ -202,21 +209,21 @@ export function Wallet({
     const hold = inner.current;
     if (!g || !hold) return;
     g.visible = k > 0.04;
-    hold.position.set(0, -0.055, 0);
-    hold.rotation.set(-0.22, 0, 0);
-    hold.scale.setScalar(1);
+    g.traverse((o) => {
+      o.renderOrder = 20;
+      o.frustumCulled = false;
+    });
+    hold.position.set(0, -0.08, -0.34);
+    hold.rotation.set(-0.12 + (1 - k) * 0.35, 0, 0);
+    hold.scale.setScalar(1.08 + k * 0.12);
     if (left.current) left.current.rotation.y = -1.18 * (1 - k);
     if (right.current) right.current.rotation.y = 1.18 * (1 - k);
   });
 
   return (
-    <Hud renderPriority={2}>
-      <PerspectiveCamera makeDefault position={[0, 0.03, 0.4]} fov={34} near={0.05} far={3} />
-      <ambientLight intensity={1.35} color="#ffe6c4" />
-      <pointLight position={[0.05, 0.12, 0.2]} intensity={2.2} distance={1.2} color="#ffe0b0" />
+    <WalletLayer>
       <group ref={root} frustumCulled={false}>
       <group ref={inner}>
-        <pointLight position={[0, 0.08, 0.14]} intensity={2.6} distance={0.7} color="#ffe2b8" />
         <Hand side={-1} skin={skin} knuckle={knuckle} nail={nail} />
         <Hand side={1} skin={skin} knuckle={knuckle} nail={nail} />
 
@@ -307,6 +314,6 @@ export function Wallet({
         </group>
       </group>
       </group>
-    </Hud>
+    </WalletLayer>
   );
 }

@@ -134,19 +134,19 @@ export function Player({ game }: { game: WildAlleyGame }) {
     if (seated) {
       const eye = seatEye();
       const tgt = seatLook();
-      const charge = !s.walletOpen && s.charging ? s.power * 0.14 : 0;
-      const tx = eye.x + s.aimX * 0.1;
+      const charge = !s.walletOpen && s.charging ? s.power * 0.12 : 0;
+      const tx = eye.x + s.aimX * 0.08;
       const ty = eye.y;
       const tz = eye.z + charge;
-      const lx = tgt.x + s.aimX * 0.16;
-      const ly = tgt.y - down.value * 0.12;
+      const lx = tgt.x + s.aimX * 0.14;
+      const ly = tgt.y - down.value * 0.06;
       const lz = tgt.z;
       if (!wasSeated.current) {
         camera.position.set(tx, ty, tz);
         look.current.set(lx, ly, lz);
         wasSeated.current = true;
       } else {
-        const ease = 1 - Math.exp(-7 * dt);
+        const ease = 1 - Math.exp(-8 * dt);
         camera.position.x += (tx - camera.position.x) * ease;
         camera.position.y += (ty - camera.position.y) * ease;
         camera.position.z += (tz - camera.position.z) * ease;
@@ -154,10 +154,15 @@ export function Player({ game }: { game: WildAlleyGame }) {
         look.current.y += (ly - look.current.y) * ease;
         look.current.z += (lz - look.current.z) * ease;
       }
-      camera.lookAt(look.current);
       camera.position.x += juice.x * 0.008;
       camera.position.y += juice.y * 0.006;
-      camera.rotation.z = juice.rot * 0.45;
+      camera.rotation.order = "YXZ";
+      const dx = look.current.x - camera.position.x;
+      const dy = look.current.y - camera.position.y;
+      const dz = look.current.z - camera.position.z;
+      camera.rotation.y = Math.atan2(-dx, -dz);
+      camera.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz));
+      camera.rotation.z = juice.rot * 0.35;
     } else if (s.phase === "bonus") {
       wasSeated.current = false;
       const side = s.bonus?.kind === "pinball" ? -3.35 : 3.35;
@@ -184,10 +189,13 @@ export function Player({ game }: { game: WildAlleyGame }) {
       camera.position.y += juice.y * 0.008;
     }
     if (camera instanceof THREE.PerspectiveCamera) {
-      const want = s.walletOpen ? 50 : seated ? 50 : 64;
+      camera.near = 0.08;
+      camera.far = 36;
+      const want = s.walletOpen ? 52 : seated ? 52 : 64;
       camera.fov += (want - camera.fov) * (1 - Math.exp(-5 * dt));
       camera.updateProjectionMatrix();
     }
+    camera.updateMatrixWorld(true);
   });
 
   return (

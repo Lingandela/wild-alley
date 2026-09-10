@@ -5,7 +5,7 @@ import type { RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { paintSign, retro, useArcadeTextures } from "@/game/retroMat";
-import { BALL_R3, CAB_FRONT, SPAWN, THROW_Z, boardOrigin } from "@/game/layout3d";
+import { BALL_R3, CAB_FRONT, SPAWN, THROW_Z, boardOrigin, nearCabinet } from "@/game/layout3d";
 import { Room } from "./Room";
 import { LaneMachine } from "./LaneMachine";
 import { Wallet } from "./Wallet";
@@ -140,39 +140,56 @@ function BonusCabinet({ x, kind }: { x: number; kind: "plinko" | "pinball" }) {
 }
 
 function CabinetPlates({ game }: { game: WildAlleyGame }) {
-  const startMap = useMemo(() => paintSign("START CARNIVAL", 512, 96), []);
+  const startMap = useMemo(() => paintSign("START", 512, 128), []);
   const vsMap = useMemo(() => paintSign("PASS & PLAY", 512, 96), []);
   const startMat = useMemo(
-    () => new THREE.MeshLambertMaterial({ map: startMap, emissive: "#c47a3a", emissiveMap: startMap, emissiveIntensity: 0.4 }),
+    () => new THREE.MeshLambertMaterial({ map: startMap, emissive: "#c47a3a", emissiveMap: startMap, emissiveIntensity: 0.55 }),
     [startMap],
   );
   const vsMat = useMemo(
-    () => new THREE.MeshLambertMaterial({ map: vsMap, emissive: "#c45c48", emissiveMap: vsMap, emissiveIntensity: 0.35 }),
+    () => new THREE.MeshLambertMaterial({ map: vsMap, emissive: "#c45c48", emissiveMap: vsMap, emissiveIntensity: 0.4 }),
     [vsMap],
   );
+  const hint = useRef<THREE.MeshLambertMaterial>(null);
+  useFrame((_, dt) => {
+    const s = game.session;
+    const near = s.screen === "menu" && nearCabinet(s.playerX, s.playerZ);
+    const want = near ? 0.95 : 0.4;
+    startMat.emissiveIntensity += (want - startMat.emissiveIntensity) * Math.min(1, dt * 8);
+    if (hint.current) hint.current.emissiveIntensity = near ? 0.7 : 0.15;
+  });
   const show = game.session.screen === "menu";
   if (!show) return null;
+  const play = (mode: "carnival" | "versus") => {
+    game.input.blockLock = true;
+    if (mode === "carnival") game.startCarnival();
+    else game.startVersus();
+  };
   return (
-    <group position={[0, 0.72, THROW_Z + CAB_FRONT + 0.02]}>
-      <mesh
-        position={[0, 0.08, 0]}
-        material={startMat}
-        onClick={(e) => {
-          e.stopPropagation();
-          game.startCarnival();
-        }}
-      >
-        <boxGeometry args={[0.62, 0.12, 0.04]} />
+    <group position={[0, 0.62, THROW_Z + CAB_FRONT + 0.03]}>
+      <mesh position={[0, 0.02, 0]} material={retro("#1a1010")}>
+        <boxGeometry args={[0.52, 0.38, 0.06]} />
       </mesh>
       <mesh
-        position={[0, -0.08, 0]}
-        material={vsMat}
-        onClick={(e) => {
+        position={[0, 0.1, 0.04]}
+        material={startMat}
+        onPointerDown={(e) => {
           e.stopPropagation();
-          game.startVersus();
+          play("carnival");
         }}
       >
-        <boxGeometry args={[0.52, 0.1, 0.04]} />
+        <boxGeometry args={[0.4, 0.14, 0.04]} />
+      </mesh>
+      <mesh position={[0, -0.08, 0.04]} material={vsMat} onPointerDown={(e) => { e.stopPropagation(); play("versus"); }}>
+        <boxGeometry args={[0.36, 0.09, 0.04]} />
+      </mesh>
+      <mesh position={[0, -0.22, 0.05]}>
+        <boxGeometry args={[0.28, 0.04, 0.02]} />
+        <meshLambertMaterial ref={hint} color="#efe6d4" emissive="#efe6d4" emissiveIntensity={0.15} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.6, 0.7]}>
+        <ringGeometry args={[0.32, 0.4, 20]} />
+        <meshBasicMaterial color="#c47a3a" transparent opacity={0.4} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -250,7 +267,9 @@ function Sim({ game }: { game: WildAlleyGame }) {
 
     const enter = game.input.has("Enter");
     if (enter && !enterHeld.current) {
-      if (s.phase === "tally") s.skipTally();
+      if (s.screen === "menu" && nearCabinet(s.playerX, s.playerZ)) {
+        game.startCarnival();
+      } else if (s.phase === "tally") s.skipTally();
       else if (s.phase === "pick" || s.phase === "intro") s.readyThrow();
       else if (s.phase === "handoff") s.finishHandoff();
       game.onUi();
@@ -349,13 +368,15 @@ function Scene({ game, view }: { game: WildAlleyGame; view: string }) {
   return (
     <>
       <LowRes />
-      <color attach="background" args={["#1a100e"]} />
-      <fog attach="fog" args={["#1a100e", 14, 26]} />
-      <ambientLight intensity={0.42} color="#e4d0b4" />
-      <hemisphereLight args={["#6a5868", "#241610", 0.42]} />
-      <spotLight position={[0, 3.05, 0.4]} angle={0.5} penumbra={0.62} intensity={48} distance={16} color="#ffe6c0" />
-      <spotLight position={[0, 2.7, -3.0]} angle={0.48} penumbra={0.5} intensity={40} distance={11} color="#ffd090" />
-      <spotLight position={[0, 2.2, 2.2]} angle={0.55} penumbra={0.7} intensity={18} distance={8} color="#ffd8b0" />
+      <color attach="background" args={["#2a1a12"]} />
+      <fog attach="fog" args={["#2a1a12", 22, 44]} />
+      <ambientLight intensity={0.64} color="#ead8c0" />
+      <hemisphereLight args={["#9a8078", "#2a1810", 0.62]} />
+      <spotLight position={[0, 3.8, 0.8]} angle={0.58} penumbra={0.55} intensity={58} distance={20} color="#ffe8c8" />
+      <spotLight position={[0, 3.5, -4.2]} angle={0.55} penumbra={0.5} intensity={46} distance={16} color="#ffd8a0" />
+      <spotLight position={[3.2, 3.2, 1.8]} angle={0.72} penumbra={0.7} intensity={24} distance={14} color="#ffd0b0" />
+      <spotLight position={[-3.2, 3.2, -1.6]} angle={0.72} penumbra={0.7} intensity={22} distance={14} color="#e8c8a0" />
+      <spotLight position={[0, 3.4, 4.0]} angle={0.7} penumbra={0.7} intensity={18} distance={12} color="#f0d8b8" />
       <Room tex={tex} />
       <group key={lane.id}>
         <LaneMachine lane={lane} tex={tex} game={game} />
@@ -377,15 +398,15 @@ export const ArcadeCanvas = memo(function ArcadeCanvas({ game, view }: { game: W
     <Canvas
       dpr={1}
       gl={{ antialias: false, powerPreference: "high-performance" }}
-      camera={{ fov: 62, position: [SPAWN.x, SPAWN.y + 0.68, SPAWN.z], near: 0.08, far: 36 }}
+      camera={{ fov: 62, position: [SPAWN.x, SPAWN.y + 0.68, SPAWN.z], near: 0.08, far: 52 }}
       className="h-full w-full touch-none"
       style={{ imageRendering: "pixelated" }}
       onCreated={({ gl, camera }) => {
         gl.setPixelRatio(1);
         gl.toneMapping = THREE.NoToneMapping;
-        gl.setClearColor("#1a100e", 1);
+        gl.setClearColor("#2a1a12", 1);
         camera.near = 0.08;
-        camera.far = 36;
+        camera.far = 52;
         if (camera instanceof THREE.PerspectiveCamera) {
           camera.fov = 64;
           camera.updateProjectionMatrix();
@@ -397,7 +418,7 @@ export const ArcadeCanvas = memo(function ArcadeCanvas({ game, view }: { game: W
       }}
     >
       <Suspense fallback={null}>
-        <color attach="background" args={["#1a100e"]} />
+        <color attach="background" args={["#2a1a12"]} />
         <Physics gravity={[0, -16, 0]} timeStep={1 / 60} interpolate>
           <Scene game={game} view={view} />
         </Physics>

@@ -158,9 +158,9 @@ export function useArcadeTextures(): ArcadeTextures {
     t.wood.wrapS = t.wood.wrapT = THREE.RepeatWrapping;
     t.wood.repeat.set(1.6, 7);
     t.wall.wrapS = t.wall.wrapT = THREE.RepeatWrapping;
-    t.wall.repeat.set(5, 2.2);
+    t.wall.repeat.set(7, 2.6);
     t.floor.wrapS = t.floor.wrapT = THREE.RepeatWrapping;
-    t.floor.repeat.set(9, 11);
+    t.floor.repeat.set(12, 14);
   }, [t]);
   return t;
 }
@@ -495,6 +495,31 @@ export function paintBill(kind: 1 | 5 | 10) {
   return tex;
 }
 
+export function paintCupLabel(text: string) {
+  const key = `cup|${text}`;
+  const hit = signCache.get(key);
+  if (hit) return hit;
+  const w = 256;
+  const h = 192;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#f4ead4";
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = "#6a1810";
+  g.font = `700 ${Math.floor(h * 0.58)}px Georgia, serif`;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(text, w / 2, h / 2 + 4);
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  signCache.set(key, tex);
+  return tex;
+}
+
 export function holeRing(value: number) {
   if (value >= 100) return "#efe6d4";
   if (value >= 80) return "#d7b48a";
@@ -507,43 +532,112 @@ export function holeRing(value: number) {
 }
 
 export function paintSkeeFace() {
-  const key = "skeeface";
+  const key = "skeeface-v3";
   const hit = signCache.get(key);
   if (hit) return hit;
-  const s = 512;
+  const s = 1024;
   const c = document.createElement("canvas");
   c.width = s;
   c.height = s;
   const g = c.getContext("2d")!;
   const cx = s / 2;
   const cy = s / 2;
-  const r = s / 2 - 6;
-  g.fillStyle = "#7a1c18";
+  const R = s / 2 - 10;
+
+  g.fillStyle = "#e4c08a";
   g.beginPath();
-  g.arc(cx, cy, r, 0, Math.PI * 2);
+  g.arc(cx, cy, R, 0, Math.PI * 2);
   g.fill();
-  g.strokeStyle = "#efe6d4";
-  g.lineWidth = 14;
-  g.stroke();
-  g.strokeStyle = "#c47a3a";
-  g.lineWidth = 5;
-  g.beginPath();
-  g.arc(cx, cy, r * 0.93, 0, Math.PI * 2);
-  g.stroke();
-  g.strokeStyle = "#5a1010";
+
+  g.strokeStyle = "rgba(90,50,24,0.16)";
   g.lineWidth = 3;
-  for (const k of [0.78, 0.58, 0.38]) {
+  for (let i = 0; i < 16; i++) {
     g.beginPath();
-    g.arc(cx, cy, r * k, 0, Math.PI * 2);
+    g.ellipse(cx, cy, R * (0.18 + i * 0.05), R * 0.94, 0, 0, Math.PI * 2);
     g.stroke();
   }
-  g.fillStyle = "#4a0c0c";
+
+  g.strokeStyle = "#efe6d4";
+  g.lineWidth = 22;
   g.beginPath();
-  g.arc(cx, cy + r * 0.12, r * 0.16, 0, Math.PI * 2);
-  g.fill();
+  g.arc(cx, cy, R, 0, Math.PI * 2);
+  g.stroke();
+  g.strokeStyle = "#c47a3a";
+  g.lineWidth = 6;
+  g.beginPath();
+  g.arc(cx, cy, R - 14, 0, Math.PI * 2);
+  g.stroke();
+
+  const rings = [0.97, 0.71, 0.49, 0.29];
+  g.strokeStyle = "#f4ead4";
+  g.lineWidth = 12;
+  for (const k of rings) {
+    g.beginPath();
+    g.arc(cx, cy, R * k, 0, Math.PI * 2);
+    g.stroke();
+  }
+  g.strokeStyle = "#6a2418";
+  g.lineWidth = 3;
+  for (const k of rings) {
+    g.beginPath();
+    g.arc(cx, cy, R * k - 8, 0, Math.PI * 2);
+    g.stroke();
+  }
+
+  const FACE_CY = 0.52;
+  const FACE_R = 0.46;
+  const toC = (lx: number, ly: number) => ({
+    x: cx + (lx / FACE_R) * R,
+    y: cy - ((ly - FACE_CY) / FACE_R) * R,
+  });
+
+  const stack: Array<{ v: number; lx: number; ly: number; rr: number }> = [
+    { v: 50, lx: 0, ly: 0.52, rr: 0.048 },
+    { v: 40, lx: 0, ly: 0.395, rr: 0.052 },
+    { v: 30, lx: 0, ly: 0.29, rr: 0.056 },
+    { v: 20, lx: 0, ly: 0.195, rr: 0.062 },
+    { v: 10, lx: 0, ly: 0.1, rr: 0.078 },
+  ];
+
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  for (const h of stack) {
+    const p = toC(h.lx, h.ly);
+    const rad = (h.rr / FACE_R) * R;
+    // Hole is a shallow wood well, not a black void. Numbers live BESIDE it.
+    g.fillStyle = "#8a5538";
+    g.beginPath();
+    g.arc(p.x, p.y, rad, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#5a3824";
+    g.beginPath();
+    g.arc(p.x, p.y, rad * 0.72, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = "#efe6d4";
+    g.lineWidth = 8;
+    g.beginPath();
+    g.arc(p.x, p.y, rad + 2, 0, Math.PI * 2);
+    g.stroke();
+    g.strokeStyle = "#c47a3a";
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(p.x, p.y, rad + 8, 0, Math.PI * 2);
+    g.stroke();
+
+    const tx = p.x + rad + Math.max(36, rad * 0.85);
+    const ty = p.y + (h.v === 10 ? 6 : 0);
+    const fs = h.v === 10 ? 78 : h.v === 50 ? 70 : 64;
+    g.font = `700 ${fs}px Georgia, serif`;
+    g.lineWidth = 10;
+    g.strokeStyle = "#fff6e4";
+    g.strokeText(String(h.v), tx, ty);
+    g.fillStyle = "#6a1810";
+    g.fillText(String(h.v), tx, ty);
+  }
+
   const tex = new THREE.CanvasTexture(c);
-  tex.magFilter = THREE.NearestFilter;
-  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
   signCache.set(key, tex);
   return tex;

@@ -21,6 +21,12 @@ import { makeBall, railsFor, stepBall, type HitEvent, type World } from "./physi
 import { makePinball, makePlinko, type BonusBoard } from "./bonus";
 import { SPAWN, SEAT } from "./layout3d";
 
+/**
+ * Session is the authority. snapshot() is the full public state a future
+ * party room would send each tick. Scoring, balls, tickets, and seats live
+ * here — meshes only present that state. Do not hide game rules in the 3D tree.
+ */
+
 function rngMulberry(seed: number) {
   let s = seed >>> 0;
   return () => {
@@ -235,11 +241,11 @@ export class Session {
     this.sabotageUsed = false;
     this.houseCheat = false;
     this.phase = "intro";
-    this.introT = 0.7;
+    this.introT = 1.8;
     this.phaseT = 0;
     this.power = 0;
     this.walletOpen = false;
-    this.message = this.lane.blurb;
+    this.message = "Balls on the rail. E for the wallet.";
     this.kickFx("lane", 0, this.lane.lipY);
   }
 
@@ -685,7 +691,7 @@ export class Session {
       if (this.introT <= 0) {
         this.phase = "pick";
         this.phaseT = 0;
-        this.message = "E — tickets in the wallet, then sling.";
+        this.message = "E for the wallet · then roll.";
       }
     }
     if (this.phase === "tally" && this.phaseT > 2.6) this.afterTally();

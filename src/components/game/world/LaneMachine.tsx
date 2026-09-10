@@ -4,7 +4,7 @@ import { CuboidCollider, CylinderCollider, RigidBody, interactionGroups } from "
 import type { RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
-import { holeRing, paintSign, paintSkeeFace, retro, retroMapped, retroSign, type ArcadeTextures } from "@/game/retroMat";
+import { holeRing, paintCupLabel, paintSign, paintSkeeFace, paintWalletCard, retro, retroMapped, retroSign, type ArcadeTextures } from "@/game/retroMat";
 import {
   BALL_R3,
   BOARD_LEAN,
@@ -15,9 +15,12 @@ import {
   FACE_R,
   FLAT,
   HALF_W,
+  HEAD_H,
+  HEAD_W,
   PLAY_Y,
   RAMP_RISE,
   RAMP_RUN,
+  SKEE_RINGS,
   THROW_Z,
   boardOrigin,
   bumperWorld,
@@ -80,45 +83,74 @@ function DropCrate({ x, y, z, w, hh, d }: { x: number; y: number; z: number; w: 
   );
 }
 
-function Cup({ lane, index }: { lane: LaneDef; index: number }) {
+function Num({ text, position, w = 0.16, h = 0.1 }: { text: string; position: [number, number, number]; w?: number; h?: number }) {
+  const mat = useMemo(
+    () =>
+      retroSign("#1a0808", {
+        map: paintSign(text, 256, 192, "#fff6e4", "#c47a3a"),
+        emissive: "#fff6e4",
+        emissiveIntensity: 0.55,
+      }),
+    [text],
+  );
+  return (
+    <mesh position={position} material={mat}>
+      <planeGeometry args={[w, h]} />
+    </mesh>
+  );
+}
+
+function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
   const h = lane.holes[index]!;
   const w = holeWorld(lane, h);
   const col = holeRing(h.value);
-  const label = useMemo(
-    () => retroSign("#efe6d4", { map: paintSign(h.label ?? String(h.value), 256, 96), emissive: col, emissiveIntensity: 0.85 }),
-    [h.label, h.value, col],
-  );
-  const dark = retro("#050203");
-  const rim = retro(col, { emissive: col, emissiveIntensity: 0.85 });
-  if (w.onBoard) {
+  const wall = retro("#c4a078", { emissive: "#8a5a38", emissiveIntensity: 0.35 });
+  const floor = retro("#f0e6d0", { emissive: "#efe6d4", emissiveIntensity: 0.7 });
+  const rim = retro("#f0e6d0", { emissive: col, emissiveIntensity: 0.7 });
+  const label = String(h.label ?? h.value);
+  const is100 = h.value >= 100;
+  const plate = useMemo(() => {
+    const m = new THREE.MeshBasicMaterial({
+      map: paintCupLabel(label),
+      color: "#ffffff",
+    });
+    return m;
+  }, [label]);
+  if (!w.onBoard) {
     return (
-      <group position={[w.lx, w.ly, 0.045]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.07]} material={dark}>
-          <cylinderGeometry args={[w.r * 0.92, w.r * 0.7, 0.2, 12]} />
+      <group position={[w.x, w.y, w.z]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]} material={wall}>
+          <cylinderGeometry args={[w.r * 0.92, w.r * 0.72, 0.08, 14]} />
         </mesh>
-        <mesh material={dark}>
-          <circleGeometry args={[w.r * 0.86, 12]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.065, 0]} material={floor}>
+          <circleGeometry args={[w.r * 0.72, 12]} />
         </mesh>
-        <mesh position={[0, 0, 0.008]} material={rim}>
-          <ringGeometry args={[w.r * 0.78, w.r * 1.12, 14]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]} material={plate}>
+          <planeGeometry args={[w.r * 1.2, w.r * 0.85]} />
         </mesh>
-        <mesh position={[0, -w.r * 0.15, 0.012]} material={label}>
-          <planeGeometry args={[w.r * 1.05, w.r * 0.42]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} material={rim}>
+          <ringGeometry args={[w.r * 0.72, w.r * 1.1, 16]} />
         </mesh>
+        <Num text={label} position={[0, 0.02, w.r + 0.08]} />
       </group>
     );
   }
+  const side = Math.sign(h.faceX || 1) * (w.r + 0.13);
   return (
-    <group position={[w.x, w.y, w.z]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]} material={dark}>
-        <cylinderGeometry args={[w.r * 0.95, w.r * 0.7, 0.18, 14]} />
+    <group position={[w.lx, w.ly, 0.02]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.02]} material={wall}>
+        <cylinderGeometry args={[w.r * 0.94, w.r * 0.82, 0.05, 16]} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} material={rim}>
-        <ringGeometry args={[w.r * 0.7, w.r * 1.05, 16]} />
+      <mesh position={[0, 0, -0.04]} material={floor}>
+        <circleGeometry args={[w.r * 0.82, 16]} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} material={label}>
-        <circleGeometry args={[w.r * 0.4, 10]} />
+      <mesh position={[0, 0, -0.035]} material={plate}>
+        <planeGeometry args={[w.r * 1.2, w.r * 0.85]} />
       </mesh>
+      <mesh material={rim}>
+        <ringGeometry args={[w.r * 0.8, w.r * 1.18, 20]} />
+      </mesh>
+      {is100 && <Num text={label} position={[side, -0.01, 0.02]} w={0.18} h={0.11} />}
     </group>
   );
 }
@@ -148,6 +180,68 @@ function Spinner({ lane, index }: { lane: LaneDef; index: number }) {
   );
 }
 
+function ReturnRack({ game }: { game: WildAlleyGame }) {
+  const group = useRef<THREE.Group>(null);
+  const wood = retro("#ead7b0");
+  useFrame(() => {
+    const s = game.session;
+    const g = group.current;
+    if (!g) return;
+    const unloading = s.phase === "intro";
+    const k = unloading ? 1 - s.introT / 1.8 : 1;
+    const onDeck = s.phase === "aim" || s.phase === "pick" || s.phase === "intro" || s.phase === "roll";
+    const n = Math.max(0, s.screen === "menu" ? 4 : s.ballsLeft - (onDeck && s.introT < 0.45 ? 1 : 0));
+    for (let i = 0; i < g.children.length; i++) {
+      const m = g.children[i] as THREE.Mesh;
+      const show = i < n;
+      m.visible = show;
+      if (!show) continue;
+      const dest = THROW_Z - 0.22 - i * 0.14;
+      const start = THROW_Z - FLAT * 0.55 - i * 0.05;
+      const z = start + (dest - start) * Math.min(1, k * 1.15);
+      m.position.set(HALF_W + 0.16, PLAY_Y - 0.02, z);
+      m.rotation.x = z * 12;
+    }
+  });
+  return (
+    <group ref={group}>
+      {Array.from({ length: 6 }, (_, i) => (
+        <mesh key={i} material={wood} visible={false}>
+          <sphereGeometry args={[BALL_R3, 10, 8]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function TableTickets({ game }: { game: WildAlleyGame }) {
+  const s = game.session;
+  const cards = s.hand.filter((c) => s.selected.includes(c.uid));
+  if (cards.length === 0 || s.screen !== "play") return null;
+  return (
+    <group>
+      {cards.map((c, i) => {
+        const map = paintWalletCard(c.name, c.type, c.text, true);
+        return (
+          <mesh
+            key={c.uid}
+            position={[-0.26 + i * 0.11, PLAY_Y + 0.018, THROW_Z + 0.16]}
+            rotation={[-Math.PI / 2, 0, -0.12 + i * 0.1]}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              game.input.blockLock = true;
+              if (s.phase === "pick") game.toggleCard(c.uid);
+            }}
+          >
+            <boxGeometry args={[0.09, 0.13, 0.004]} />
+            <meshBasicMaterial map={map} side={THREE.DoubleSide} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 export function LaneMachine({
   lane,
   tex,
@@ -174,9 +268,9 @@ export function LaneMachine({
       new THREE.MeshLambertMaterial({
         map: faceMap,
         color: "#ffffff",
-        emissive: "#4a1010",
+        emissive: "#2a140c",
         emissiveMap: faceMap,
-        emissiveIntensity: 0.28,
+        emissiveIntensity: 0.14,
         flatShading: true,
       }),
     [faceMap],
@@ -203,13 +297,22 @@ export function LaneMachine({
     game.audio.bumper();
     game.juice.addTrauma(0.1);
   };
-  const powerRef = useRef<THREE.Mesh>(null);
+  const lamps = useRef<THREE.Mesh[]>([]);
   useFrame(() => {
     const p = game.session.charging ? game.session.power : 0;
-    if (powerRef.current) powerRef.current.scale.x = 0.08 + p * 0.92;
+    const n = Math.round(p * 8);
+    for (let i = 0; i < lamps.current.length; i++) {
+      const m = lamps.current[i];
+      if (!m) continue;
+      const on = i < n;
+      const mat = m.material as THREE.MeshLambertMaterial;
+      mat.emissiveIntensity = on ? 0.95 : 0.05;
+      mat.color.set(on ? "#c45c48" : "#2a1814");
+    }
   });
 
   const laneSurf = lane.theme === "golf" ? retro("#3d6a42", { emissive: "#2a4a30", emissiveIntensity: 0.18 }) : maple;
+  const ringMat = retro("#efe6d4");
 
   return (
     <group>
@@ -221,7 +324,6 @@ export function LaneMachine({
         <CuboidCollider args={[CAB_W / 2, 0.7, 0.12]} position={[0, 1.1, zEnd - 0.22]} />
       </RigidBody>
 
-      {/* Low cabinet under the alley — not tall side planks */}
       <mesh position={[0, 0.4, cabZ]} material={body}>
         <boxGeometry args={[CAB_W, 0.8, cabLen]} />
       </mesh>
@@ -235,18 +337,15 @@ export function LaneMachine({
         <boxGeometry args={[CAB_W - 0.1, 0.55, 0.05]} />
       </mesh>
 
-      {/* Maple alley — one slab */}
       <mesh position={[0, PLAY_Y - 0.03, THROW_Z - FLAT / 2]} material={laneSurf}>
         <boxGeometry args={[half * 2, 0.06, FLAT]} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, PLAY_Y + 0.002, THROW_Z - FLAT / 2]} material={laneSurf}>
         <planeGeometry args={[half * 2 - 0.02, FLAT - 0.02]} />
       </mesh>
-      {/* Foul line */}
       <mesh position={[0, PLAY_Y + 0.006, THROW_Z - 0.08]} material={cream}>
         <boxGeometry args={[half * 2 - 0.04, 0.004, 0.018]} />
       </mesh>
-      {/* Low rails */}
       <mesh position={[-half - 0.025, PLAY_Y + 0.028, THROW_Z - FLAT / 2]} material={railL}>
         <boxGeometry args={[0.05, 0.055, FLAT]} />
       </mesh>
@@ -254,7 +353,6 @@ export function LaneMachine({
         <boxGeometry args={[0.05, 0.055, FLAT]} />
       </mesh>
 
-      {/* Ramp */}
       <mesh position={[0, PLAY_Y + RAMP_RISE / 2, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={laneSurf}>
         <boxGeometry args={[half * 2 + 0.02, 0.055, slope]} />
       </mesh>
@@ -264,55 +362,36 @@ export function LaneMachine({
       <mesh position={[half + 0.025, PLAY_Y + RAMP_RISE / 2 + 0.03, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={railR}>
         <boxGeometry args={[0.05, 0.055, slope]} />
       </mesh>
-      {/* Ramp lip */}
       <mesh position={[0, PLAY_Y + RAMP_RISE + 0.01, zEnd + 0.02]} material={gold}>
         <boxGeometry args={[half * 2 + 0.08, 0.03, 0.04]} />
       </mesh>
 
-      {/* Ball return trough, right side */}
-      <mesh position={[half + 0.16, PLAY_Y - 0.08, THROW_Z - FLAT * 0.35]} material={dark}>
-        <boxGeometry args={[0.16, 0.1, FLAT * 0.55]} />
+      <mesh position={[half + 0.16, PLAY_Y - 0.08, THROW_Z - FLAT * 0.32]} material={dark}>
+        <boxGeometry args={[0.16, 0.1, FLAT * 0.62]} />
       </mesh>
-      {[0.15, 0.32, 0.49, 0.66].map((t, i) => (
-        <mesh key={i} position={[half + 0.16, PLAY_Y - 0.04, THROW_Z - 0.35 - t]} material={retro("#ead7b0")}>
-          <sphereGeometry args={[BALL_R3, 8, 6]} />
-        </mesh>
-      ))}
-
-      {/* Front cage bars */}
-      {[-0.28, -0.14, 0, 0.14, 0.28].map((x) => (
-        <mesh key={x} position={[x, PLAY_Y + 0.22, THROW_Z + 0.16]} material={retro("#3a2a28")}>
-          <boxGeometry args={[0.018, 0.42, 0.018]} />
-        </mesh>
-      ))}
-      <mesh position={[0, PLAY_Y + 0.44, THROW_Z + 0.16]} material={retro("#3a2a28")}>
-        <boxGeometry args={[0.62, 0.02, 0.02]} />
-      </mesh>
+      <ReturnRack game={game} />
 
       {board && (
         <group position={[origin.x, origin.y, origin.z]} rotation={[-BOARD_LEAN, 0, 0]}>
-          {/* Scoring cabinet behind the disc */}
-          <mesh position={[0, 0.62, -0.22]} material={body}>
-            <boxGeometry args={[1.18, 1.42, 0.42]} />
+          <mesh position={[0, HEAD_H / 2 - 0.04, -0.1]} material={body}>
+            <boxGeometry args={[HEAD_W, HEAD_H, 0.2]} />
           </mesh>
-          <mesh position={[0, 1.38, -0.08]} material={stripe}>
-            <boxGeometry args={[1.22, 0.1, 0.36]} />
+          <mesh position={[0, HEAD_H - 0.02, -0.04]} material={stripe}>
+            <boxGeometry args={[HEAD_W + 0.04, 0.08, 0.22]} />
           </mesh>
-          {/* Circular target */}
-          <mesh position={[0, FACE_CY, -0.07]} rotation={[Math.PI / 2, 0, 0]} material={body}>
-            <cylinderGeometry args={[FACE_R + 0.04, FACE_R + 0.04, 0.14, 20]} />
+          <mesh position={[0, FACE_CY, 0.012]} material={faceMat}>
+            <circleGeometry args={[FACE_R, 32]} />
           </mesh>
-          <mesh position={[0, FACE_CY, 0.01]} material={faceMat}>
-            <circleGeometry args={[FACE_R, 20]} />
-          </mesh>
-          <mesh position={[0, FACE_CY, 0.02]} material={cream}>
-            <ringGeometry args={[FACE_R * 0.96, FACE_R + 0.012, 20]} />
-          </mesh>
-          {lane.holes.map((_, i) => (
-            <Cup key={i} lane={lane} index={i} />
+          {SKEE_RINGS.map((r) => (
+            <mesh key={r} position={[0, FACE_CY, 0.028]} rotation={[Math.PI / 2, 0, 0]} material={ringMat}>
+              <torusGeometry args={[r, 0.011, 8, 28]} />
+            </mesh>
           ))}
-          <mesh position={[0, 1.42, 0.08]} material={marquee}>
-            <planeGeometry args={[1.05, 0.2]} />
+          {lane.holes.map((_, i) => (
+            <SkeeCup key={i} lane={lane} index={i} />
+          ))}
+          <mesh position={[0, HEAD_H - 0.08, 0.08]} material={marquee}>
+            <planeGeometry args={[0.92, 0.16]} />
           </mesh>
         </group>
       )}
@@ -322,20 +401,29 @@ export function LaneMachine({
             <planeGeometry args={[1.0, 0.22]} />
           </mesh>
           {lane.holes.map((_, i) => (
-            <Cup key={i} lane={lane} index={i} />
+            <SkeeCup key={i} lane={lane} index={i} />
           ))}
         </>
       )}
 
-      {/* Power meter on the throw deck */}
-      <mesh position={[0, PLAY_Y + 0.012, THROW_Z + 0.08]} material={dark}>
-        <boxGeometry args={[0.72, 0.01, 0.04]} />
+      <mesh position={[0, PLAY_Y + 0.01, THROW_Z + 0.1]} material={dark}>
+        <boxGeometry args={[0.62, 0.012, 0.05]} />
       </mesh>
-      <mesh ref={powerRef} position={[0, PLAY_Y + 0.018, THROW_Z + 0.08]} material={retro("#c45c48", { emissive: "#c45c48", emissiveIntensity: 0.7 })}>
-        <boxGeometry args={[0.7, 0.012, 0.028]} />
-      </mesh>
+      {Array.from({ length: 8 }, (_, i) => (
+        <mesh
+          key={i}
+          ref={(el) => {
+            if (el) lamps.current[i] = el;
+          }}
+          position={[-0.245 + i * 0.07, PLAY_Y + 0.02, THROW_Z + 0.1]}
+          material={retro("#2a1814", { emissive: "#c45c48", emissiveIntensity: 0.05 })}
+        >
+          <boxGeometry args={[0.055, 0.014, 0.028]} />
+        </mesh>
+      ))}
 
-      {/* Legs */}
+      <TableTickets game={game} />
+
       {[
         [-CAB_W / 2 + 0.12, THROW_Z + 0.08],
         [CAB_W / 2 - 0.12, THROW_Z + 0.08],
@@ -379,9 +467,7 @@ export function LaneMachine({
       })}
       {lane.crates.map((c, i) => {
         const w = crateWorld(lane, c);
-        return (
-          <DropCrate key={`c${i}`} x={w.x} y={w.y} z={w.z} w={w.w} hh={w.hh} d={w.d} />
-        );
+        return <DropCrate key={`c${i}`} x={w.x} y={w.y} z={w.z} w={w.w} hh={w.hh} d={w.d} />;
       })}
       {lane.spinners.map((_, i) => (
         <Spinner key={`s${i}`} lane={lane} index={i} />

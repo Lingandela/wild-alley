@@ -25,7 +25,15 @@ function overlay(mat: THREE.MeshLambertMaterial) {
 /** Parent the bifold to the game camera so it never steals the renderer. */
 function WalletLayer({ children }: { children: React.ReactNode }) {
   const { camera } = useThree();
-  return createPortal(children, camera);
+  const host = useMemo(() => {
+    const prev = camera.getObjectByName("wallet-host");
+    if (prev) camera.remove(prev);
+    const g = new THREE.Group();
+    g.name = "wallet-host";
+    camera.add(g);
+    return g;
+  }, [camera]);
+  return createPortal(children, host);
 }
 
 function SlotCard({
@@ -208,12 +216,20 @@ export function Wallet({
     const g = root.current;
     const hold = inner.current;
     if (!g || !hold) return;
-    g.visible = k > 0.04;
+    if (!s.walletOpen) {
+      open.value = 0;
+      open.vel = 0;
+      g.visible = false;
+      hold.position.set(0, -4, -2);
+      hold.scale.setScalar(0.001);
+      return;
+    }
+    g.visible = true;
     g.traverse((o) => {
       o.renderOrder = 20;
       o.frustumCulled = false;
     });
-    hold.position.set(0, -0.08, -0.34);
+    hold.position.set(0, -0.1, -0.34);
     hold.rotation.set(-0.12 + (1 - k) * 0.35, 0, 0);
     hold.scale.setScalar(1.08 + k * 0.12);
     if (left.current) left.current.rotation.y = -1.18 * (1 - k);
@@ -222,8 +238,8 @@ export function Wallet({
 
   return (
     <WalletLayer>
-      <group ref={root} frustumCulled={false}>
-      <group ref={inner}>
+      <group ref={root} visible={false} frustumCulled={false}>
+      <group ref={inner} position={[0, -0.1, -0.34]}>
         <Hand side={-1} skin={skin} knuckle={knuckle} nail={nail} />
         <Hand side={1} skin={skin} knuckle={knuckle} nail={nail} />
 

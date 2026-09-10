@@ -11,19 +11,53 @@ export const CAB_FRONT = 0.38;
 export const FLAT = 3.05;
 export const RAMP_RUN = 0.72;
 export const RAMP_RISE = 0.48;
-/** Lean back from vertical so cups face the thrower. */
-export const BOARD_LEAN = 0.22;
-export const FACE_R = 0.64;
-export const FACE_CY = 0.58;
+/** Lean back from vertical so the face reads to the thrower. */
+export const BOARD_LEAN = 0.16;
+/** Circular target on the wooden head. Center = 50-point cup. */
+export const FACE_R = 0.46;
+export const FACE_CY = 0.52;
+export const HEAD_W = 1.14;
+export const HEAD_H = 1.28;
 /** Fraction of post-lip distance that is the ramp (rest is the scoring face). */
 export const RAMP_T = 0.14;
-export const SPAWN = { x: 0.0, y: 0.8, z: 3.55 };
-export const SEAT = { x: 0, y: 0.8, z: THROW_Z + 0.82 };
+export const SPAWN = { x: 0.0, y: 0.8, z: 4.2 };
+export const SEAT = { x: 0, y: 0.8, z: THROW_Z + 0.86 };
+
+/** Walkable parlor extents (meters). Shared by room colliders and fall-out. */
+export const PARLOR = { wall: 6.55, zBack: -10.4, zFront: 7.0, ceil: 4.05 };
 
 export const COL = {
   static: 0,
   player: 1,
 } as const;
+
+/** Concentric ring radii on the face (board-local, centered at FACE_CY). */
+export const SKEE_RINGS = [0.445, 0.325, 0.225, 0.135];
+
+/**
+ * Real skee-ball anatomy (Skee-Ball Inc / arcade target):
+ *   - circular target with concentric rings
+ *   - 50 in the center, then 40 / 30 / 20 / 10 stacked down the midline
+ *   - 10 is the large bottom catch
+ *   - 100s sit in the top corners of the wooden head, outside the circle
+ * Board-local: +X right, +Y up the face.
+ */
+export const SKEE_CUPS: Array<{
+  value: number;
+  lx: number;
+  ly: number;
+  r: number;
+  special?: Hole["special"];
+  captureEasy?: boolean;
+}> = [
+  { value: 100, lx: -0.42, ly: 1.06, r: 0.046, special: "plinko" },
+  { value: 100, lx: 0.42, ly: 1.06, r: 0.046 },
+  { value: 50, lx: 0, ly: 0.52, r: 0.048 },
+  { value: 40, lx: 0, ly: 0.395, r: 0.052 },
+  { value: 30, lx: 0, ly: 0.29, r: 0.056 },
+  { value: 20, lx: 0, ly: 0.195, r: 0.062, captureEasy: true },
+  { value: 10, lx: 0, ly: 0.1, r: 0.078, captureEasy: true },
+];
 
 export function xWorld(lane: LaneDef, x: number) {
   return (x / lane.rail) * HALF_W;
@@ -70,11 +104,39 @@ function postLipT(lane: LaneDef, y: number) {
   return (y - lane.lipY) / Math.max(0.08, lane.length - lane.lipY);
 }
 
-/** Local Y on the scoring face. 0.14 near the lip, ~1.16 at the 100. */
+/** Local Y on the scoring face. 0.08 near the lip, ~1.06 at the 100s. */
 export function faceLocalY(lane: LaneDef, y: number) {
   const t = postLipT(lane, y);
   const u = Math.max(0, Math.min(1, (t - RAMP_T) / (1 - RAMP_T)));
-  return 0.14 + u * FACE_R * 1.6;
+  return 0.08 + u * 0.98;
+}
+
+export function faceToLane(lane: LaneDef, lx: number, ly: number, r: number) {
+  const u = Math.max(0, Math.min(1, (ly - 0.08) / 0.98));
+  const t = RAMP_T + u * (1 - RAMP_T);
+  return {
+    x: (lx / HALF_W) * lane.rail,
+    y: lane.lipY + t * (lane.length - lane.lipY),
+    r: r * 0.85,
+  };
+}
+
+export function skeeHolesFor(lane: LaneDef): Hole[] {
+  return SKEE_CUPS.map((c) => {
+    const p = faceToLane(lane, c.lx, c.ly, c.r);
+    return {
+      x: p.x,
+      y: p.y,
+      r: p.r,
+      value: c.value,
+      label: String(c.value),
+      special: c.special,
+      captureEasy: c.captureEasy,
+      faceX: c.lx,
+      faceY: c.ly,
+      faceR: c.r,
+    };
+  });
 }
 
 export function ballWorld(lane: LaneDef, b: { x: number; y: number; z: number }) {
@@ -101,9 +163,9 @@ export function ballWorld(lane: LaneDef, b: { x: number; y: number; z: number })
 
 export function holeWorld(lane: LaneDef, hole: Hole) {
   if (usesBackboard(lane.theme)) {
-    const lx = xWorld(lane, hole.x);
-    const ly = faceLocalY(lane, hole.y);
-    const vis = Math.max(0.09, Math.min(0.175, 0.165 - hole.value * 0.0006));
+    const lx = hole.faceX ?? xWorld(lane, hole.x);
+    const ly = hole.faceY ?? faceLocalY(lane, hole.y);
+    const vis = hole.faceR ?? Math.max(0.09, Math.min(0.175, 0.165 - hole.value * 0.0006));
     return { ...boardLocalToWorld(lx, ly, 0.04), r: vis, onBoard: true, lx, ly };
   }
   const p = ballWorld(lane, { x: hole.x, y: hole.y, z: 0 });
@@ -134,12 +196,16 @@ export function crateWorld(lane: LaneDef, c: { x: number; y: number; w: number; 
 }
 
 export function seatEye() {
-  return { x: 0, y: 1.48, z: THROW_Z + 0.95 };
+  return { x: 0, y: 1.5, z: THROW_Z + 0.78 };
 }
 
 export function seatLook() {
   const o = boardOrigin();
-  return { x: 0, y: o.y + FACE_CY * 0.42, z: o.z + 0.18 };
+  return { x: 0, y: o.y + FACE_CY, z: o.z + 0.14 };
+}
+
+export function nearCabinet(x: number, z: number) {
+  return Math.abs(x) < 0.95 && z < THROW_Z + 1.9 && z > THROW_Z - 0.35;
 }
 
 export function themeFelt(theme: LaneDef["theme"]) {

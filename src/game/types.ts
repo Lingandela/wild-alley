@@ -16,6 +16,10 @@ export type Hole = {
   special?: "plinko" | "pinball" | "mult";
   label?: string;
   captureEasy?: boolean;
+  /** Board-local position on a classic skee face. When set, 3D uses these, not the 2D map. */
+  faceX?: number;
+  faceY?: number;
+  faceR?: number;
 };
 
 export type Bumper = {

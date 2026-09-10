@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { BALL_R3, ballWorld } from "@/game/layout3d";
+import { makeBall, stepBall } from "@/game/physics";
+import { BALL_R } from "@/game/types";
 import { retro } from "@/game/retroMat";
 
 type Look = "wood" | "heavy" | "superball" | "magnet" | "grease" | "anchor" | "lucky";
@@ -73,6 +75,41 @@ function BallBody({ look }: { look: Look }) {
   );
 }
 
+function AimGhost({ game }: { game: WildAlleyGame }) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const extras = useMemo(() => ({}), []);
+  useFrame(() => {
+    const s = game.session;
+    const inst = mesh.current;
+    if (!inst) return;
+    const show = (s.phase === "aim" || s.phase === "pick") && !s.walletOpen && s.screen === "play";
+    inst.visible = show;
+    if (!show) return;
+    const p = s.charging ? Math.max(0.18, s.power) : 0.42;
+    const b = makeBall(s.aimX, 0.12, BALL_R);
+    b.vy = (1.55 + p * 3.05) * s.flags.launchScale;
+    b.vx = s.aimX * 0.22;
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      stepBall(b, s.world, 0.038, s.flags.restitution, s.flags.friction, extras);
+      const w = ballWorld(s.lane, b);
+      dummy.position.set(w.x, w.y + 0.01, w.z);
+      const sc = (s.charging ? 1 : 0.55) * (1 - i / n) * 0.9;
+      dummy.scale.setScalar(Math.max(0.2, sc));
+      dummy.updateMatrix();
+      inst.setMatrixAt(i, dummy.matrix);
+    }
+    inst.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, 18]} frustumCulled={false}>
+      <sphereGeometry args={[0.02, 6, 5]} />
+      <meshBasicMaterial color="#fff6e4" transparent opacity={0.82} depthWrite={false} />
+    </instancedMesh>
+  );
+}
+
 export function PlayBall({ game }: { game: WildAlleyGame }) {
   const a = useRef<THREE.Group>(null);
   const b = useRef<THREE.Group>(null);
@@ -85,12 +122,13 @@ export function PlayBall({ game }: { game: WildAlleyGame }) {
     const split = s.wants("split");
     const staging = s.phase === "aim" || s.phase === "pick" || s.phase === "intro" || s.phase === "demo";
     const pop = s.fxName === "split" ? s.fxT * 0.5 : s.fxT * 0.12;
+    const hiddenIntro = s.phase === "intro" && s.introT > 0.4;
     for (let i = 0; i < 2; i++) {
       const mesh = groups[i];
       if (!mesh) continue;
       const ball = s.balls[i];
       const ghostTwin = i === 1 && !ball && split && staging && !!s.balls[0];
-      if (!ball && !ghostTwin) {
+      if (hiddenIntro || (!ball && !ghostTwin)) {
         mesh.visible = false;
         continue;
       }
@@ -100,7 +138,7 @@ export function PlayBall({ game }: { game: WildAlleyGame }) {
         continue;
       }
       mesh.visible = true;
-      const pull = s.phase === "aim" && s.charging ? s.power * 0.32 : 0;
+      const pull = s.phase === "aim" && s.charging ? s.power * 0.28 : 0;
       const w = ballWorld(s.lane, src);
       const splitOff = ghostTwin ? 0.055 : i === 1 && staging && split && s.balls.length < 2 ? 0.055 : 0;
       const launchSep = s.fxName === "split" && s.phase === "roll" ? (1 - s.fxT) * 0.02 * (i === 0 ? -1 : 1) : 0;
@@ -124,6 +162,7 @@ export function PlayBall({ game }: { game: WildAlleyGame }) {
       <group ref={b} visible={false}>
         <BallBody look={look} />
       </group>
+      <AimGhost game={game} />
     </>
   );
 }

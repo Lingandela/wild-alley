@@ -1,21 +1,8 @@
 import type { Hole, LaneDef } from "./types";
+import { skeeHolesFor } from "./layout3d";
 
 function cup(x: number, y: number, r: number, value: number, extra?: Partial<Hole>): Hole {
   return { x, y, r, value, ...extra };
-}
-
-function classicBoard(L: number): Hole[] {
-  return [
-    cup(0, L - 0.1, 0.058, 100, { special: "plinko", label: "100" }),
-    cup(-0.17, L - 0.32, 0.072, 50),
-    cup(0.17, L - 0.32, 0.072, 50),
-    cup(0, L - 0.52, 0.078, 40),
-    cup(-0.18, L - 0.72, 0.08, 30),
-    cup(0.18, L - 0.72, 0.08, 30),
-    cup(0, L - 0.92, 0.088, 20, { captureEasy: true }),
-    cup(-0.22, L - 1.14, 0.105, 10, { captureEasy: true }),
-    cup(0.22, L - 1.14, 0.105, 10, { captureEasy: true }),
-  ];
 }
 
 export const LANES: LaneDef[] = [
@@ -28,7 +15,7 @@ export const LANES: LaneDef[] = [
     width: 1,
     rail: 0.4,
     lipY: 1.05,
-    holes: classicBoard(2.58),
+    holes: [],
     bumpers: [],
     pegs: [],
     hills: [],
@@ -160,6 +147,8 @@ export const LANES: LaneDef[] = [
     oil: { x: 0.08, y: 0.48, r: 0.16 },
   },
 ];
+
+LANES[0]!.holes = skeeHolesFor(LANES[0]!);
 
 export const VERSUS_LANE_INDEX = [0, 2, 4];
 

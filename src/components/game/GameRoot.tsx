@@ -100,20 +100,9 @@ export function GameRoot() {
       {game ? (
         <Overlays game={game} snap={snap} />
       ) : (
-        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          <p className="font-display text-5xl tracking-[-0.03em] text-fg">Wild Alley</p>
-          <p className="mt-1 text-xs uppercase tracking-[0.28em] text-muted">Walk the parlor. Play the wood.</p>
-          <div className="mt-4 flex w-full max-w-md flex-col gap-2">
-            <button type="button" className="ticket px-5 py-3 font-display text-lg">
-              Start Carnival
-            </button>
-            <button type="button" className="ticket px-5 py-3 font-display text-lg">
-              Pass & Play
-            </button>
-            <button type="button" className="ticket px-5 py-2 text-sm text-muted">
-              How to play
-            </button>
-          </div>
+        <div className="absolute left-4 top-[max(0.9rem,env(safe-area-inset-top))]">
+          <p className="font-display text-4xl tracking-[-0.03em] text-fg sm:text-5xl">Wild Alley</p>
+          <p className="mt-1 text-[0.65rem] uppercase tracking-[0.28em] text-muted">Walk up · press START</p>
         </div>
       )}
     </main>

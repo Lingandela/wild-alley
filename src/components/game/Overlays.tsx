@@ -35,34 +35,38 @@ function Ticket({
 
 function Menu({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <p className="font-display text-5xl tracking-[-0.03em] text-fg [text-shadow:0_2px_0_#1a1010]">Wild Alley</p>
-      <p className="mt-1 text-xs uppercase tracking-[0.28em] text-muted">Walk the parlor. Play the wood.</p>
-      <div className="mt-4 flex w-full max-w-md flex-col gap-2">
-        <button type="button" className="ticket px-5 py-3 font-display text-lg" onClick={() => game.startCarnival()}>
-          Start Carnival
+    <div className="absolute inset-0">
+      <div className="absolute left-4 top-[max(0.9rem,env(safe-area-inset-top))]">
+        <p className="font-display text-4xl tracking-[-0.03em] text-fg [text-shadow:0_2px_0_#1a1010] sm:text-5xl">
+          Wild Alley
+        </p>
+        <p className="mt-1 text-[0.65rem] uppercase tracking-[0.28em] text-muted">Walk up · press START</p>
+        <p className="mt-1 text-xs tabular-nums text-muted">Best carnival {snap.highScore}</p>
+      </div>
+      <div className="pointer-events-auto absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 flex flex-wrap gap-2">
+        <button type="button" className="ticket px-4 py-2 font-display" onClick={() => game.startCarnival()}>
+          Play
         </button>
-        <button type="button" className="ticket px-5 py-3 font-display text-lg" onClick={() => game.startVersus()}>
+        <button type="button" className="ticket px-4 py-2 text-sm text-muted" onClick={() => game.startVersus()}>
           Pass & Play
         </button>
-        <button type="button" className="ticket px-5 py-2 text-sm text-muted" onClick={() => game.showHow(true)}>
+        <button type="button" className="ticket px-4 py-2 text-sm text-muted" onClick={() => game.showHow(true)}>
           How to play
         </button>
       </div>
-      <p className="mt-3 text-xs tabular-nums text-muted">Best carnival {snap.highScore}</p>
     </div>
   );
 }
 
 function How({ game }: { game: WildAlleyGame }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center px-5">
+    <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center px-5">
       <div className="ticket w-full max-w-md p-6">
         <h2 className="font-display text-2xl">House rules</h2>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted">
-          <li>Start Carnival sits you at the machine. Hold W / Space or drag back, then let go — the ball rolls up the ramp into the cups. A and D add english.</li>
-          <li>E looks down at a bifold wallet. Tickets live in the credit-card slots. Hover to slide one out. Click (or 1–5) to tear it.</li>
-          <li>You can walk the parlor from the menu. WASD, click to look. The wood and the cups are the game.</li>
+          <li>Walk the parlor with WASD. Click to look. Walk up to the machine and hit START (or Enter when close). Balls roll down the return rail.</li>
+          <li>Hold W / Space or drag back, then let go — the ball hops the ramp into the cups. A and D add english. The cream dots are the aim path.</li>
+          <li>E looks down at a bifold wallet. Tickets live in the card slots. Hover to slide one out, click (or 1–5) to tear it onto the table.</li>
           <li>Cups pay chips. Tickets build mult. Some cups dump you into plinko or pinball.</li>
           <li>Pass & Play: while their ball is live, open the wallet for sabotage.</li>
         </ul>
@@ -76,7 +80,7 @@ function How({ game }: { game: WildAlleyGame }) {
 
 function Hud({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+    <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <div className="[text-shadow:0_2px_0_#100c12]">
         <p className="text-[0.65rem] uppercase tracking-[0.18em] text-muted">{snap.laneName}</p>
         <p className="font-display text-2xl tabular-nums leading-none">
@@ -111,7 +115,7 @@ function Hud({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
 function Intro({ snap }: { snap: Snapshot }) {
   if (snap.phase !== "intro") return null;
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+    <div className="absolute inset-x-0 top-16 z-10 flex justify-center">
       <div className="text-center [text-shadow:0_2px_0_#100c12]">
         <p className="text-xs uppercase tracking-[0.24em] text-muted">Now serving</p>
         <h2 className="mt-1 font-display text-4xl">{snap.introName}</h2>
@@ -124,35 +128,35 @@ function Intro({ snap }: { snap: Snapshot }) {
 function AimHint({ snap }: { snap: Snapshot }) {
   if (snap.walletOpen) {
     return (
-      <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
+      <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
         Tear a ticket from a slot · 1–5 or click · E closes
       </p>
     );
   }
   if (snap.phase === "aim") {
     return (
-      <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
+      <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
         Hold W / Space or drag back · release to roll · A/D english · E wallet
       </p>
     );
   }
   if (snap.phase === "pick" || snap.phase === "intro") {
     return (
-      <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
+      <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
         E wallet · then sling the ball
       </p>
     );
   }
   if (snap.canSabotage) {
     return (
-      <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-sm text-danger [text-shadow:0_2px_0_#100c12]">
+      <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-danger [text-shadow:0_2px_0_#100c12]">
         Ball is live — E for sabotage
       </p>
     );
   }
   if (snap.phase === "roll") {
     return (
-      <p className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
+      <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
         A left · D right english
       </p>
     );
@@ -163,7 +167,7 @@ function AimHint({ snap }: { snap: Snapshot }) {
 function TouchPad({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   if (snap.screen === "how" || snap.screen === "results") return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 flex items-end justify-between px-3 sm:hidden">
+    <div className="absolute inset-x-0 bottom-16 z-20 flex items-end justify-between px-3 sm:hidden">
       <div className="pointer-events-auto grid grid-cols-3 gap-1">
         <span />
         <button
@@ -218,7 +222,7 @@ function TouchPad({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
 function Tally({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   if (snap.phase !== "tally") return null;
   return (
-    <button type="button" className="absolute inset-0 z-20 flex items-center justify-center px-5" onClick={() => game.skipTally()}>
+    <button type="button" className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center px-5" onClick={() => game.skipTally()}>
       <div className="ticket w-full max-w-xs p-5 text-left">
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Throw settled</p>
         <ul className="mt-3 space-y-1.5">
@@ -245,7 +249,7 @@ function Tally({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
 function Prize({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   if (snap.phase !== "prize") return null;
   return (
-    <div className="absolute inset-0 z-20 flex items-end justify-center px-3 pb-8 sm:items-center">
+    <div className="pointer-events-auto absolute inset-0 z-20 flex items-end justify-center px-3 pb-8 sm:items-center">
       <div className="w-full max-w-md">
         <h2 className="text-center font-display text-3xl [text-shadow:0_2px_0_#100c12]">Carnival prize</h2>
         <p className="mb-4 text-center text-sm text-muted">Pick a ticket for the next alley.</p>
@@ -262,7 +266,7 @@ function Prize({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
 function Handoff({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   if (snap.phase !== "handoff") return null;
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center px-5">
+    <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center px-5">
       <div className="ticket w-full max-w-sm p-6 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Pass the device</p>
         <h2 className="mt-2 font-display text-3xl">{snap.names[snap.player]} is up</h2>
@@ -283,7 +287,7 @@ function Results({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
       : `${snap.names[snap.winner]} takes the alley`
     : "Carnival closed";
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center px-5">
+    <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center px-5">
       <div className="ticket w-full max-w-sm p-6 text-center">
         <h2 className="font-display text-3xl">{title}</h2>
         <p className="mt-3 font-display text-4xl tabular-nums">
@@ -309,7 +313,7 @@ function Results({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
 
 function Paused({ game }: { game: WildAlleyGame }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center px-5">
+    <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center px-5">
       <div className="ticket w-full max-w-sm p-6 text-center">
         <h2 className="font-display text-3xl">Paused</h2>
         <div className="mt-6 flex flex-col gap-2">
@@ -328,24 +332,25 @@ function Paused({ game }: { game: WildAlleyGame }) {
 function Flash({ snap }: { snap: Snapshot }) {
   if (!snap.flash) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-1/3 z-20 text-center">
+    <div className="absolute inset-x-0 top-1/3 z-20 text-center">
       <p className="font-display text-3xl text-fg [text-shadow:0_3px_0_#100c12]">{snap.flash}</p>
     </div>
   );
 }
 
 function LookHint({ snap }: { snap: Snapshot }) {
-  if (snap.pointerLocked || snap.walletOpen || snap.screen === "how" || snap.screen === "results" || snap.screen === "play") return null;
+  if (snap.pointerLocked || snap.walletOpen || snap.screen === "how" || snap.screen === "results" || snap.screen === "play")
+    return null;
   return (
-    <p className="pointer-events-none absolute inset-x-0 top-1/2 z-10 hidden -translate-y-16 text-center text-xs uppercase tracking-[0.2em] text-muted [text-shadow:0_2px_0_#100c12] sm:block">
-      Click the parlor to look
+    <p className="absolute inset-x-0 top-1/2 z-10 hidden -translate-y-16 text-center text-xs uppercase tracking-[0.2em] text-muted [text-shadow:0_2px_0_#100c12] sm:block">
+      WASD walk · click to look · START on the machine
     </p>
   );
 }
 
 export function Overlays({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   return (
-    <>
+    <div className="pointer-events-none absolute inset-0 z-20">
       {snap.screen === "menu" && <Menu game={game} snap={snap} />}
       {snap.screen === "how" && <How game={game} />}
       {snap.screen === "play" && (
@@ -363,6 +368,6 @@ export function Overlays({ game, snap }: { game: WildAlleyGame; snap: Snapshot }
       {snap.screen === "results" && <Results game={game} snap={snap} />}
       <LookHint snap={snap} />
       <TouchPad game={game} snap={snap} />
-    </>
+    </div>
   );
 }

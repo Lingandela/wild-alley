@@ -6,7 +6,7 @@ import type { KinematicCharacterController } from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { AnimBus } from "@/game/anim";
-import { COL, SEAT, SPAWN, seatEye, seatLook } from "@/game/layout3d";
+import { COL, PARLOR, SEAT, SPAWN, seatEye, seatLook } from "@/game/layout3d";
 
 const EYE = 0.7;
 const WALK = 3.15;
@@ -69,7 +69,7 @@ export function Player({ game }: { game: WildAlleyGame }) {
     let nx = t.x + mv.x;
     let ny = t.y + mv.y;
     let nz = t.z + mv.z;
-    if (ny < -0.15 || Math.abs(nx) > 4.4 || nz > 5.2 || nz < -8.4) {
+    if (ny < -0.15 || Math.abs(nx) > PARLOR.wall - 0.2 || nz > PARLOR.zFront - 0.2 || nz < PARLOR.zBack + 0.2) {
       nx = SPAWN.x;
       ny = SPAWN.y;
       nz = SPAWN.z;
@@ -190,7 +190,7 @@ export function Player({ game }: { game: WildAlleyGame }) {
     }
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.near = 0.08;
-      camera.far = 36;
+      camera.far = 52;
       const want = s.walletOpen ? 52 : seated ? 52 : 64;
       camera.fov += (want - camera.fov) * (1 - Math.exp(-5 * dt));
       camera.updateProjectionMatrix();

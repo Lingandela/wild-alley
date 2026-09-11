@@ -4,13 +4,14 @@ import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import type { UiCard } from "@/game/types";
 import { AnimBus, easeOutBack, spring, stepSpring, tween, stepTween } from "@/game/anim";
-import { paintBill, paintIdCard, paintWalletCard, retro, retroMapped } from "@/game/retroMat";
+import { paintBill, paintIdCard, paintStub, retro, retroMapped } from "@/game/retroMat";
+import { seatLap } from "@/game/layout3d";
 
 const LEAF_W = 0.122;
 const LEAF_H = 0.102;
 const LEAF_T = 0.008;
-const CARD_W = 0.092;
-const CARD_H = 0.058;
+const CARD_W = 0.078;
+const CARD_H = 0.018;
 const SLOTS = 5;
 
 const _off = new THREE.Vector3();
@@ -39,8 +40,8 @@ function SlotCard({
   const rip = useRef(tween(0, 0, 0.01));
   const ripping = useRef(false);
   const map = useMemo(
-    () => paintWalletCard(card.name, card.type, card.text, selected),
-    [card.name, card.type, card.text, selected],
+    () => paintStub(card.name, card.type, selected),
+    [card.name, card.type, selected],
   );
   const face = useMemo(
     () =>
@@ -54,7 +55,7 @@ function SlotCard({
 
   useFrame((_, raw) => {
     const dt = Math.min(raw, 0.1);
-    pull.current.target = torn ? 0.85 : hover ? 0.62 : selected ? 0.4 : 0.12;
+    pull.current.target = torn ? 0.5 : hover ? 0.48 : selected ? 0.28 : 0.06;
     stepSpring(pull.current, dt);
     const p = pull.current.value;
     let extra = 0;
@@ -67,12 +68,12 @@ function SlotCard({
     }
     const g = group.current;
     if (!g) return;
-    const peek = 0.02 + p * 0.046 + extra * 0.12;
+    const peek = 0.004 + p * 0.016 + extra * 0.05;
     g.position.y = peek;
-    g.position.z = 0.004 + slot * 0.0016 + p * 0.01;
-    g.rotation.x = -0.04 - extra * 0.55;
-    g.rotation.z = (slot - 2) * 0.012;
-    g.visible = extra < 0.96;
+    g.position.z = 0.003 + slot * 0.001 + p * 0.004;
+    g.rotation.x = -0.02 - extra * 0.2;
+    g.rotation.z = (slot - 2) * 0.008;
+    g.visible = ripping.current ? extra < 0.96 : !torn;
   });
 
   return (
@@ -199,15 +200,23 @@ export function Wallet({
       return;
     }
     g.visible = true;
-    g.position.copy(camera.position);
-    g.quaternion.copy(camera.quaternion);
-    _off.set(0, -0.24 - (1 - k) * 0.08, -0.36);
-    _off.applyQuaternion(camera.quaternion);
-    g.position.add(_off);
-    _euler.set(-0.28 + (1 - k) * 0.35, 0, 0);
-    _tilt.setFromEuler(_euler);
-    g.quaternion.multiply(_tilt);
-    g.scale.setScalar(0.95 + k * 0.08);
+    if (s.seated && s.screen === "play") {
+      const lap = seatLap();
+      g.position.set(lap.x, lap.y - (1 - k) * 0.1, lap.z);
+      _euler.set(lap.rx + (1 - k) * 0.25, 0, 0);
+      g.quaternion.setFromEuler(_euler);
+      g.scale.setScalar(0.92 + k * 0.1);
+    } else {
+      g.position.copy(camera.position);
+      g.quaternion.copy(camera.quaternion);
+      _off.set(0, -0.18 - (1 - k) * 0.08, -0.34);
+      _off.applyQuaternion(camera.quaternion);
+      g.position.add(_off);
+      _euler.set(-0.42 + (1 - k) * 0.28, 0, 0);
+      _tilt.setFromEuler(_euler);
+      g.quaternion.multiply(_tilt);
+      g.scale.setScalar(0.88 + k * 0.08);
+    }
     if (left.current) left.current.rotation.y = -1.18 * (1 - k);
     if (right.current) right.current.rotation.y = 1.18 * (1 - k);
   });
@@ -278,14 +287,20 @@ export function Wallet({
             </mesh>
           ))}
           {cards.map((card, i) => (
-            <group key={card.uid} position={[LEAF_W / 2, -0.016 + i * 0.017, LEAF_T * 0.8]}>
+            <group key={card.uid} position={[LEAF_W / 2, -0.026 + i * 0.014, LEAF_T * 0.82 + i * 0.001]}>
               <SlotCard
                 card={card}
                 selected={!sab && s.selected.includes(card.uid)}
                 slot={i}
                 hover={hover === card.uid}
                 torn={!sab && s.selected.includes(card.uid)}
-                onHover={setHover}
+                onHover={(id) => {
+                  setHover(id);
+                  if (s.hoverUid !== id) {
+                    s.setHover(id);
+                    game.onUi();
+                  }
+                }}
                 onTear={() => {
                   if (sab) game.sabotage(card.uid);
                   else {

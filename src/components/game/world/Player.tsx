@@ -86,15 +86,17 @@ export function Player({ game }: { game: WildAlleyGame }) {
     s.pointerLocked = game.input.locked;
     const seated = s.seated && s.screen === "play" && s.phase !== "bonus";
 
-    if (!s.paused && !s.walletOpen) {
+    const selecting = s.walletOpen && s.walletPinned;
+    if (!s.paused && !selecting) {
       const m = game.input.consumeLook();
       s.lookYaw -= m.x * SENS;
       s.lookPitch -= m.y * SENS;
       if (seated) {
+        if (game.input.down()) s.lookPitch = Math.min(0.92, s.lookPitch + 1.7 * dt);
         if (s.lookYaw > 0.62) s.lookYaw = 0.62;
         if (s.lookYaw < -0.62) s.lookYaw = -0.62;
-        if (s.lookPitch > 0.34) s.lookPitch = 0.34;
-        if (s.lookPitch < -0.95) s.lookPitch = -0.95;
+        if (s.lookPitch > 0.92) s.lookPitch = 0.92;
+        if (s.lookPitch < -0.45) s.lookPitch = -0.45;
       } else {
         const lim = Math.PI / 2 - 0.05;
         if (s.lookPitch > lim) s.lookPitch = lim;
@@ -156,7 +158,7 @@ export function Player({ game }: { game: WildAlleyGame }) {
       camera.position.y += juice.y * 0.006;
       camera.rotation.order = "YXZ";
       camera.rotation.y = s.lookYaw;
-      camera.rotation.x = s.lookPitch - down.value * 0.12;
+      camera.rotation.x = s.lookPitch;
       camera.rotation.z = juice.rot * 0.35;
     } else if (s.phase === "bonus") {
       wasSeated.current = false;
@@ -168,7 +170,7 @@ export function Player({ game }: { game: WildAlleyGame }) {
       camera.lookAt(side, 1.4, -1.3);
     } else {
       wasSeated.current = false;
-      const pitch = s.lookPitch - down.value * 0.38;
+      const pitch = s.lookPitch + down.value * 0.22;
       const traveling = grounded.current ? spd : 0;
       const bobAmt = bob.current.to("amp", traveling > 0.4 ? 1 : 0, 10, 0.8);
       bob.current.tick("amp", dt);

@@ -53,6 +53,7 @@ export class WildAlleyGame {
       screen: this.session.screen,
       phase: this.session.phase,
       walletOpen: this.session.walletOpen,
+      walletPinned: this.session.walletPinned,
       seated: this.session.seated,
       lookPitch: Number(this.session.lookPitch.toFixed(2)),
       paused: this.session.paused,
@@ -170,6 +171,7 @@ declare global {
       screen: string;
       phase: string;
       walletOpen: boolean;
+      walletPinned: boolean;
       seated: boolean;
       lookPitch: number;
       paused: boolean;

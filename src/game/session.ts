@@ -119,6 +119,7 @@ export class Session {
   walletOpen = false;
   /** E / HUD pinned the wallet open so looking up does not auto-close it. */
   walletPinned = false;
+  hoverUid: string | null = null;
   justSank: number | "gutter" | null = null;
   playerX = SPAWN.x;
   playerZ = SPAWN.z;
@@ -148,6 +149,7 @@ export class Session {
     this.message = "";
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.playerX = SPAWN.x;
     this.playerZ = SPAWN.z;
     this.lookYaw = 0;
@@ -254,6 +256,7 @@ export class Session {
     this.power = 0;
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.message = "Balls on the rail. E for the wallet. Look down at your lap.";
     this.kickFx("lane", 0, this.lane.lipY);
   }
@@ -301,6 +304,7 @@ export class Session {
     this.seatLatch = false;
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.charging = false;
   }
 
@@ -319,6 +323,7 @@ export class Session {
     if (this.balls.length === 0) this.balls = [makeBall(0, 0.12, BALL_R)];
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.lookPitch = 0.08;
     this.lookYaw = 0;
     this.message = "Pull back. W / Space or drag. Let go.";
@@ -515,6 +520,7 @@ export class Session {
     this.charging = false;
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.power = p;
     this.chips = 0;
     this.bumperChips = 0;
@@ -793,6 +799,7 @@ export class Session {
       this.phaseT = 0;
       this.walletOpen = false;
       this.walletPinned = false;
+      this.hoverUid = null;
       this.balls = [makeBall(0, 0.12, BALL_R)];
       this.message = `${this.names[this.player]} to throw`;
       return;
@@ -805,6 +812,7 @@ export class Session {
     this.phaseT = 0;
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.balls = [makeBall(0, 0.12, BALL_R)];
     this.message = `${this.ballsLeft} ball${this.ballsLeft === 1 ? "" : "s"} left`;
   }
@@ -820,6 +828,7 @@ export class Session {
     this.phaseT = 0;
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     this.balls = [makeBall(0, 0.12, BALL_R)];
   }
 
@@ -872,6 +881,7 @@ export class Session {
     this.phaseT = 0;
     this.walletOpen = false;
     this.walletPinned = false;
+    this.hoverUid = null;
     if (this.mode === "carnival" && this.scores[0]! > this.highScore) {
       this.highScore = this.scores[0]!;
     }
@@ -924,6 +934,7 @@ export class Session {
       introName: this.lane.name,
       canReady: this.phase === "pick",
       walletOpen: this.walletOpen,
+      hover: this.cardByUid(this.hoverUid),
       isVersus: this.mode === "versus",
       winner: this.scores[0]! === this.scores[1]! ? -1 : this.scores[0]! > this.scores[1]! ? 0 : 1,
       pointerLocked: this.pointerLocked,
@@ -937,18 +948,37 @@ export class Session {
     return b ? Math.hypot(b.vx, b.vy) : 0;
   }
 
+  cardByUid(uid: string | null): UiCard | null {
+    if (!uid) return null;
+    return (
+      this.hand.find((c) => c.uid === uid) ??
+      this.sabotageHands[0]!.find((c) => c.uid === uid) ??
+      this.sabotageHands[1]!.find((c) => c.uid === uid) ??
+      null
+    );
+  }
+
+  setHover(uid: string | null) {
+    this.hoverUid = uid;
+  }
+
   toggleWallet() {
     if (this.paused) return;
     if (this.screen === "results" || this.screen === "how") return;
     this.walletOpen = !this.walletOpen;
     this.walletPinned = this.walletOpen;
+    this.hoverUid = null;
     if (this.walletOpen) {
       this.charging = false;
       this.power = 0;
+      if (this.seated && this.lookPitch < 0.58) this.lookPitch = 0.58;
+    } else if (this.seated) {
+      this.lookPitch = 0.08;
+      this.lookYaw = 0;
     }
   }
 
-  /** Look-down opens an unpinned wallet. Looking up closes it unless E-pinned. */
+  /** Look-down opens an unpinned wallet. Looking at the board closes it unless E-pinned. */
   setLookWallet(open: boolean) {
     if (this.paused) return;
     if (this.screen === "results" || this.screen === "how") return;
@@ -961,7 +991,10 @@ export class Session {
       }
       return;
     }
-    if (this.walletOpen && !this.walletPinned) this.walletOpen = false;
+    if (this.walletOpen && !this.walletPinned) {
+      this.walletOpen = false;
+      this.hoverUid = null;
+    }
   }
 
   yaw() {

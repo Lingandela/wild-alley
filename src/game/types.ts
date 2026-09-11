@@ -134,6 +134,7 @@ export type Snapshot = {
   introName: string;
   canReady: boolean;
   walletOpen: boolean;
+  hover: UiCard | null;
   isVersus: boolean;
   winner: number;
   pointerLocked: boolean;

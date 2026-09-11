@@ -207,6 +207,11 @@ export function seatEye() {
   return { x: 0, y: 1.46, z: THROW_Z + 0.62 };
 }
 
+export function seatLap() {
+  return { x: 0, y: 1.13, z: THROW_Z + 0.24, rx: -1.08 };
+}
+
+
 export function seatLook() {
   const o = boardOrigin();
   return { x: 0, y: o.y + FACE_CY, z: o.z + 0.14 };

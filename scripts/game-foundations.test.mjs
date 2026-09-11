@@ -8,7 +8,10 @@ import {
   ALLEY_PLAY,
   canCapture,
   classicHolesFor,
+  isLookingAtLap,
   isReachableX,
+  LOOK_BOARD,
+  LOOK_LAP,
   makeTestBall,
   shouldSplitNow,
   simMatchesFace,
@@ -128,6 +131,28 @@ test("wallet releases throw charge and ready returns to the lane", () => {
   assert.equal(s.walletOpen, false);
   assert.ok(Math.abs(s.lookPitch - 0.08) < 1e-6);
   assert.equal(s.phase, "aim");
+});
+
+test("looking at the lap opens an unpinned wallet; looking at the board closes it", () => {
+  const s = playClassic();
+  assert.equal(isLookingAtLap(0.08), false);
+  assert.ok(LOOK_LAP > LOOK_BOARD);
+  assert.equal(isLookingAtLap(0.55), true);
+  s.lookPitch = 0.55;
+  s.setLookWallet(true);
+  assert.equal(s.walletOpen, true);
+  assert.equal(s.walletPinned, false);
+  s.lookPitch = 0.08;
+  s.setLookWallet(false);
+  assert.equal(s.walletOpen, false);
+  s.toggleWallet();
+  assert.equal(s.walletOpen, true);
+  assert.equal(s.walletPinned, true);
+  assert.ok(s.lookPitch > LOOK_BOARD);
+  s.setLookWallet(false);
+  assert.equal(s.walletOpen, true, "pinned wallet stays open when you look at the board");
+  s.readyThrow();
+  assert.equal(s.walletOpen, false);
 });
 
 test("frame-rate: 30 Hz and 60 Hz keep the same capture decision on a parked ball", () => {

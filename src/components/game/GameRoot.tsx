@@ -44,6 +44,7 @@ const EMPTY: Snapshot = {
   introName: "",
   canReady: false,
   walletOpen: false,
+  hover: null,
   isVersus: false,
   winner: -1,
   pointerLocked: false,

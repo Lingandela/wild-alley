@@ -302,6 +302,69 @@ export function paintTearTicket(name: string, type: string, text: string, select
   return tex;
 }
 
+/** Tiny arcade stub: name only. Full rules live on the hover card. */
+export function paintStub(name: string, type: string, selected = false) {
+  const key = `stub2|${name}|${type}|${selected}`;
+  const hit = signCache.get(key);
+  if (hit) return hit;
+  const w = 360;
+  const h = 120;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  const pal = TYPE_FACE[type] ?? TYPE_FACE.ball!;
+  g.fillStyle = selected ? "#fff3d6" : pal.bg;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = pal.band;
+  g.fillRect(0, 0, 28, h);
+  g.fillStyle = pal.bg;
+  for (let y = 10; y < h; y += 14) {
+    g.beginPath();
+    g.arc(14, y, 5, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.fillStyle = pal.band;
+  g.fillRect(28, 0, w - 28, 18);
+  g.fillStyle = "#f4e6c4";
+  g.font = "700 11px Georgia, serif";
+  g.textAlign = "left";
+  g.textBaseline = "middle";
+  g.fillText("WILD ALLEY", 38, 9);
+  g.textAlign = "right";
+  g.fillText(type.toUpperCase(), w - 10, 9);
+
+  g.fillStyle = pal.ink;
+  g.textAlign = "left";
+  g.font = "700 28px Georgia, serif";
+  g.fillText(name.toUpperCase().slice(0, 16), 40, 58);
+
+  g.strokeStyle = pal.band;
+  g.setLineDash([4, 5]);
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(36, h - 22);
+  g.lineTo(w - 16, h - 22);
+  g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = "#8a6a48";
+  g.font = "700 11px ui-monospace, monospace";
+  g.fillText(`№ ${String(name.length * 17 + 4200).slice(-4)}`, 40, h - 10);
+
+  if (selected) {
+    g.strokeStyle = "#c47a3a";
+    g.lineWidth = 6;
+    g.strokeRect(3, 3, w - 6, h - 6);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  signCache.set(key, tex);
+  return tex;
+}
+
 const TYPE_FACE: Record<string, { bg: string; ink: string; band: string }> = {
   ball: { bg: "#f3e6c8", ink: "#3a2418", band: "#c45c48" },
   lane: { bg: "#efe0b8", ink: "#3a1810", band: "#c47a3a" },

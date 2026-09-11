@@ -65,7 +65,7 @@ function How({ game }: { game: WildAlleyGame }) {
         <h2 className="font-display text-2xl">House rules</h2>
         <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted">
           <li>Walk the parlor with WASD. Click to look. Walk up and hit START on the machine (or Play). Q stands up; Sit puts you back at the table.</li>
-          <li>Look down at your lap or press E / Wallet. Tickets sit in the card slots — click one (two max). Then Throw or tap W. Hold W / Space or drag back, release to roll. A and D add english.</li>
+          <li>Look down at your lap (or hold S / press E). Tickets are little stubs — hover for the fine print, click or 1–5 to insert (two max). Then Throw or tap W. Hold W / Space or drag back, release to roll. A and D add english.</li>
           <li>Cups pay chips. Tickets build mult. Some cups dump you into plinko or pinball.</li>
           <li>Pass & Play: while their ball is live, open the wallet for sabotage.</li>
         </ul>
@@ -153,7 +153,7 @@ function AimHint({ snap }: { snap: Snapshot }) {
   if (snap.phase === "pick" || snap.phase === "intro") {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Wallet to pick tickets · look down at your lap · W throws · Q walks away
+        Wallet to pick stubs · look down at your lap · W throws · Q walks away
       </p>
     );
   }
@@ -174,34 +174,84 @@ function AimHint({ snap }: { snap: Snapshot }) {
   return null;
 }
 
+function StubChip({
+  card,
+  selected,
+  onClick,
+  onHover,
+}: {
+  card: UiCard;
+  selected?: boolean;
+  onClick?: () => void;
+  onHover?: (card: UiCard | null) => void;
+}) {
+  const tone =
+    card.type === "sabotage" ? "text-danger" : card.type === "score" ? "text-copper" : "text-fg";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => onHover?.(card)}
+      onMouseLeave={() => onHover?.(null)}
+      onFocus={() => onHover?.(card)}
+      onBlur={() => onHover?.(null)}
+      className={cn(
+        "ticket flex h-16 w-11 shrink-0 flex-col items-center justify-center px-1 py-1 text-center",
+        selected ? "ring-2 ring-copper" : "opacity-90 hover:opacity-100",
+      )}
+    >
+      <p className="text-[0.5rem] uppercase tracking-[0.12em] text-muted">{card.type}</p>
+      <p className={cn("font-display text-[0.65rem] leading-tight", tone)}>{card.name}</p>
+    </button>
+  );
+}
+
+function TicketTip({ snap }: { snap: Snapshot }) {
+  const card = snap.hover;
+  if (!card) return null;
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-24 z-40 flex justify-center px-4">
+      <div className="ticket max-w-sm px-4 py-3">
+        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-muted">{card.type}</p>
+        <p className="font-display text-lg leading-tight">{card.name}</p>
+        <p className="mt-1 text-sm leading-snug text-muted">{card.text}</p>
+        <p className="mt-2 text-[0.65rem] uppercase tracking-[0.14em] text-copper">
+          {card.type === "sabotage" ? "Click to sabotage" : "Click or 1–5 to insert"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function WalletTray({ game, snap }: { game: WildAlleyGame; snap: Snapshot }) {
   if (!snap.walletOpen) return null;
   const list = snap.canSabotage ? snap.sabotageHand : snap.hand;
   return (
-    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
-      <div className="mx-auto w-full max-w-3xl">
-        <p className="mb-1 text-center text-xs text-muted [text-shadow:0_2px_0_#100c12]">
-          {snap.canSabotage ? "Tear a sabotage ticket" : "Click a ticket in the wallet · two max · 1–5"}
-        </p>
-        {list.length === 0 ? (
-          <p className="text-sm text-muted">Empty pockets.</p>
-        ) : (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {list.map((c) => (
-              <Ticket
-                key={c.uid}
-                card={c}
-                selected={snap.selected.includes(c.uid)}
-                compact
-                onClick={() => {
-                  if (snap.canSabotage) game.sabotage(c.uid);
-                  else game.toggleCard(c.uid);
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="pointer-events-auto absolute left-3 top-20 z-30 max-w-[min(100%,20rem)]">
+      <p className="mb-1 text-[0.65rem] text-muted [text-shadow:0_2px_0_#100c12]">
+        {snap.canSabotage ? "Insert a sabotage stub" : "Hover a stub · 1–5 inserts"}
+      </p>
+      {list.length === 0 ? (
+        <p className="text-sm text-muted">Empty pockets.</p>
+      ) : (
+        <div className="flex gap-1">
+          {list.map((c) => (
+            <StubChip
+              key={c.uid}
+              card={c}
+              selected={snap.selected.includes(c.uid)}
+              onHover={(card) => {
+                game.session.setHover(card?.uid ?? null);
+                game.onUi();
+              }}
+              onClick={() => {
+                if (snap.canSabotage) game.sabotage(c.uid);
+                else game.toggleCard(c.uid);
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -400,6 +450,7 @@ export function Overlays({ game, snap }: { game: WildAlleyGame; snap: Snapshot }
           <Hud game={game} snap={snap} />
           <Intro snap={snap} />
           <AimHint snap={snap} />
+          <TicketTip snap={snap} />
           <WalletTray game={game} snap={snap} />
           <Tally game={game} snap={snap} />
           <Prize game={game} snap={snap} />

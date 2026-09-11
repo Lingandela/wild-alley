@@ -4,7 +4,7 @@ import { CuboidCollider, CylinderCollider, RigidBody, interactionGroups } from "
 import type { RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
-import { holeRing, paintCupLabel, paintSign, paintSkeeFace, paintWalletCard, retro, retroMapped, retroSign, type ArcadeTextures } from "@/game/retroMat";
+import { holeRing, paintCupLabel, paintSign, paintSkeeFace, paintStub, retro, retroMapped, retroSign, type ArcadeTextures } from "@/game/retroMat";
 import {
   BALL_R3,
   BOARD_LEAN,
@@ -229,19 +229,29 @@ function TableTickets({ game }: { game: WildAlleyGame }) {
   return (
     <group>
       {cards.map((c, i) => {
-        const map = paintWalletCard(c.name, c.type, c.text, true);
+        const map = paintStub(c.name, c.type, true);
         return (
           <mesh
             key={c.uid}
-            position={[-0.26 + i * 0.11, PLAY_Y + 0.018, THROW_Z + 0.16]}
-            rotation={[-Math.PI / 2, 0, -0.12 + i * 0.1]}
+            position={[-0.22 + i * 0.08, PLAY_Y + 0.022, THROW_Z + 0.12]}
+            rotation={[-Math.PI / 2, 0, -0.08 + i * 0.05]}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              s.setHover(c.uid);
+              game.onUi();
+            }}
+            onPointerOut={(e) => {
+              e.stopPropagation();
+              s.setHover(null);
+              game.onUi();
+            }}
             onPointerDown={(e) => {
               e.stopPropagation();
               game.input.blockLock = true;
-              if (s.phase === "pick") game.toggleCard(c.uid);
+              if (s.phase === "pick" || s.phase === "aim") game.toggleCard(c.uid);
             }}
           >
-            <boxGeometry args={[0.09, 0.13, 0.004]} />
+            <planeGeometry args={[0.07, 0.02]} />
             <meshBasicMaterial map={map} side={THREE.DoubleSide} />
           </mesh>
         );

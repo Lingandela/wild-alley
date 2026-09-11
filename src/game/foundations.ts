@@ -67,6 +67,15 @@ export function classicHolesFor(lane: LaneDef): Hole[] {
   });
 }
 
+/** Seated lookPitch above this is looking at the lap (Three.js +X pitch = down). */
+export const LOOK_LAP = 0.4;
+/** Seated lookPitch below this is looking at the board again. */
+export const LOOK_BOARD = 0.26;
+
+export function isLookingAtLap(pitch: number) {
+  return pitch > LOOK_LAP;
+}
+
 export function simMatchesFace(h: Hole) {
   if (h.faceX == null) return true;
   return Math.abs(h.x - h.faceX) < 1e-6;

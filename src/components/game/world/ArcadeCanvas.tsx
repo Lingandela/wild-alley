@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { paintSign, retro, useArcadeTextures } from "@/game/retroMat";
 import { BALL_R3, BOARD_LEAN, CAB_FRONT, HEAD_H, SPAWN, THROW_Z, boardLocalToWorld, nearCabinet } from "@/game/layout3d";
+import { LOOK_BOARD, isLookingAtLap } from "@/game/foundations";
 import { Room } from "./Room";
 import { LaneMachine } from "./LaneMachine";
 import { Wallet } from "./Wallet";
@@ -259,12 +260,13 @@ function Sim({ game }: { game: WildAlleyGame }) {
     if (eNow && !eHeld.current) game.toggleWallet();
     eHeld.current = eNow;
 
-    const lookingDown = s.lookPitch < -0.45 || (s.seated && game.input.down());
+    const lookingDown = s.seated && isLookingAtLap(s.lookPitch);
     if (lookingDown) s.setLookWallet(true);
-    else if (s.lookPitch > -0.22) s.setLookWallet(false);
+    else if (s.lookPitch < LOOK_BOARD) s.setLookWallet(false);
 
-    game.input.blockLock = s.walletOpen;
-    if (s.walletOpen && document.pointerLockElement) document.exitPointerLock();
+    const picking = s.walletOpen && s.walletPinned;
+    game.input.blockLock = picking;
+    if (picking && document.pointerLockElement) document.exitPointerLock();
 
     const qNow = game.input.has("KeyQ");
     if (qNow && !qHeld.current) {
@@ -304,13 +306,13 @@ function Sim({ game }: { game: WildAlleyGame }) {
     if (s.phase === "demo") s.tickDemo(dt);
 
     const wantThrow = game.input.up();
-    if ((s.phase === "pick" || s.phase === "intro") && s.seated && !s.walletOpen && wantThrow && !chargeLock.current) {
+    if ((s.phase === "pick" || s.phase === "intro") && s.seated && wantThrow && !chargeLock.current) {
       game.ready();
       chargeLock.current = true;
     }
     if (!wantThrow) chargeLock.current = false;
 
-    if (s.phase === "aim" && !s.walletOpen && s.seated && !chargeLock.current) {
+    if (s.phase === "aim" && !(s.walletOpen && s.walletPinned) && s.seated && !chargeLock.current) {
       const rail = s.world.alleyRail ?? s.lane.rail;
       const steer = (game.input.left() ? -1 : 0) + (game.input.right() ? 1 : 0);
       s.aimX += steer * 0.55 * dt;

@@ -40,8 +40,8 @@ Logic: `node --experimental-strip-types --import ./scripts/register-ts.mjs --tes
 ## File map
 
 ```
+src/game/foundations.ts      capture height, delayed split, look-down, labels
 src/game/session.ts          phases, scoring, tickets, sit/stand, wallet flags
-src/game/foundations.ts      capture height, delayed split, face mapping, labels
 src/game/physics.ts          2D ball integration
 src/game/layout3d.ts         meters, skee cups, ballWorld / seatEye
 src/game/lanes.ts            five alley defs
@@ -56,7 +56,7 @@ src/components/game/world/ArcadeCanvas.tsx   scene, Sim loop, score lamp
 src/components/game/world/LaneMachine.tsx    table, ramp, head, cups
 src/components/game/world/PlayBall.tsx       2D sim → mesh
 src/components/game/world/Player.tsx         FPS walk + seated look
-src/components/game/world/Wallet.tsx         bifold viewmodel
+src/components/game/world/Wallet.tsx         lap bifold + small stubs
 src/components/game/world/Room.tsx           parlor, wall art, lamps
 src/components/game/world/AbilityFX.tsx      split / magnet / etc. juice
 public/tex/                  wood, leather, prizes, posters, …
@@ -77,16 +77,16 @@ Screens: `menu | how | play | results`
 ## Keyboard (current contract)
 
 - **Menu / walking:** WASD move, mouse look, click START or Play.
-- **Seated pick/intro:** E / look-down / S opens wallet. **W / Space** edge → `readyThrow` then **must release** before charge (`chargeLock`). Enter also readies.
+- **Seated pick/intro:** Look down at your lap (mouse or hold **S**) or press **E** / **Wallet**. Stubs are tiny — hover for the fine print, click or **1–5** to insert (two max). **W / Space** edge → `readyThrow` then **must release** before charge (`chargeLock`). Enter also readies.
 - **Seated aim:** hold W/Space or drag to charge, release to launch. A/D english. Wallet closed.
 - **Q** stand / sit near the cabinet.
-- Look-down (`lookPitch < -0.45`) or seated S auto-opens the wallet (`walletPinned = false`). E pins it. Looking up closes an unpinned wallet.
+- Look-down is **positive** pitch (`lookPitch > 0.4`) onto a world-space lap wallet. E pins it and frees the cursor. Looking back at the board closes an unpinned wallet. Do not freeze look or drop pointer lock on an unpinned look-down — that traps the throw.
 
 ## Known pain (start here)
 
 The owner’s last notes: keyboard felt wrong, looking down had no wallet, textures floated. Those three were just patched. Remaining / likely still wrong:
 
-- Wallet is a viewmodel in the lower third; some ticket faces wash out white; scale/pose still “in the air” rather than sitting on a lap.
+- Wallet sits on the lap in world space when seated. Tickets are small stubs; hover shows the full text.
 - Skee face, cup readability, and alley length have been through several rebuilds — still not “a real skee-ball table” to the owner’s eye.
 - Bonus cabinets (plinko/pinball) sit in the open floor at x = ±3.35, not against a wall.
 - `npm run dev` is the live path. Production smoke sometimes snapshots before the canvas mounts (`hasCanvas: false`) — that is timing, not a blank app.

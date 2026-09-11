@@ -19,7 +19,8 @@ import { mint, prizePool, sabotageDeck, shuffle, starterDeck } from "./cards";
 import { LANES, VERSUS_LANE_INDEX, cloneLane } from "./lanes";
 import { makeBall, railsFor, stepBall, type HitEvent, type World } from "./physics";
 import { makePinball, makePlinko, type BonusBoard } from "./bonus";
-import { SPAWN, SEAT } from "./layout3d";
+import { FACE_HALF, HALF_W, SEAT, SPAWN, usesBackboard } from "./layout3d";
+import { applyWide, canCapture, shouldSplitNow, syncHoleLabels } from "./foundations";
 
 /**
  * Session is the authority. snapshot() is the full public state a future
@@ -130,6 +131,7 @@ export class Session {
   fxT = 0;
   fxX = 0;
   fxY = 0.12;
+  splitSpawned = false;
 
   constructor() {
     this.bootDemo();
@@ -171,11 +173,14 @@ export class Session {
   }
 
   rebuildWorld() {
+    const back = usesBackboard(this.lane.theme);
     this.world = {
       rail: this.lane.rail,
+      alleyRail: back ? HALF_W : this.lane.rail,
+      faceRail: back ? FACE_HALF : this.lane.rail,
       length: this.lane.length,
       lipY: this.lane.lipY,
-      segs: railsFor(this.lane.rail, this.lane.length),
+      segs: railsFor(back ? HALF_W : this.lane.rail, back ? this.lane.lipY : this.lane.length, { cap: !back }),
       bumpers: this.lane.bumpers,
       pegs: this.lane.pegs,
       hills: this.lane.hills,
@@ -314,6 +319,8 @@ export class Session {
     if (this.balls.length === 0) this.balls = [makeBall(0, 0.12, BALL_R)];
     this.walletOpen = false;
     this.walletPinned = false;
+    this.lookPitch = 0.08;
+    this.lookYaw = 0;
     this.message = "Pull back. W / Space or drag. Let go.";
   }
 
@@ -364,8 +371,8 @@ export class Session {
         f.chipsAdd += 40;
         break;
       case "wide":
-        f.holeScale = 1.22;
-        for (const h of this.lane.holes) h.r *= 1.22;
+        this.flags.holeScale = 1.22;
+        applyWide(this.lane.holes, 1.22);
         break;
       case "bumpers":
         this.lane.bumpers.push(
@@ -437,6 +444,7 @@ export class Session {
       this.rebuildWorld();
       this.kickFx(effect);
     }
+    syncHoleLabels(this.lane.holes);
   }
 
   kickFx(name: string, x?: number, y?: number) {
@@ -496,14 +504,9 @@ export class Session {
     ball.rest = 0;
     ball.superSkip = this.flags.superball;
     this.balls = [ball];
+    this.splitSpawned = false;
     if (this.flags.split) {
-      const twin = makeBall(this.aimX, 0.12, BALL_R);
-      twin.vx = -vx * 0.7 - 0.15;
-      twin.vy = ball.vy * 0.96;
-      twin.superSkip = this.flags.superball;
-      this.balls.push(twin);
-      this.kickFx("split", this.aimX, 0.12);
-      this.flashMsg("SPLITTER");
+      this.kickFx("throw", this.aimX, 0.12);
     } else {
       this.kickFx(this.flags.heavy ? "heavy" : this.flags.magnet ? "magnet" : "throw", this.aimX, 0.12);
     }
@@ -548,18 +551,13 @@ export class Session {
 
   tryCapture(b: Ball): boolean {
     if (b.scored || !b.alive) return false;
-    const speed = Math.hypot(b.vx, b.vy);
     for (const h of this.lane.holes) {
-      const d = Math.hypot(b.x - h.x, b.y - h.y);
-      const reach = h.r - b.r * 0.08;
-      if (d > Math.max(0.012, reach)) continue;
-      const easy = h.captureEasy || speed < (h.value >= 80 ? 1.55 : 2.15);
-      const dead = d < h.r * 0.48;
-      if (!(easy || dead)) continue;
+      if (!canCapture(b, h)) continue;
       if (b.superSkip) {
         b.superSkip = false;
-        const nx = (b.x - h.x) / (d || 1);
-        const ny = (b.y - h.y) / (d || 1);
+        const d = Math.hypot(b.x - h.x, b.y - h.y) || 1;
+        const nx = (b.x - h.x) / d;
+        const ny = (b.y - h.y) / d;
         b.vx = nx * 1.4 + b.vx * 0.3;
         b.vy = ny * 1.4 + b.vy * 0.3;
         this.holeChips += Math.max(10, Math.floor(h.value * 0.5));
@@ -636,6 +634,19 @@ export class Session {
         if (h.kind === "bumper") this.bumperChips += 8;
       }
       this.tryCapture(b);
+    }
+    const lead = this.balls.find((b) => b.alive && !b.scored);
+    if (lead && shouldSplitNow(lead, this.flags, this.splitSpawned)) {
+      const twin = makeBall(lead.x, lead.y, BALL_R);
+      twin.vx = -lead.vx * 0.55 - 0.12;
+      twin.vy = lead.vy * 0.94;
+      twin.z = lead.z;
+      twin.vz = lead.vz;
+      twin.superSkip = this.flags.superball;
+      this.balls.push(twin);
+      this.splitSpawned = true;
+      this.kickFx("split", lead.x, lead.y);
+      this.flashMsg("SPLITTER");
     }
   }
 
@@ -931,6 +942,10 @@ export class Session {
     if (this.screen === "results" || this.screen === "how") return;
     this.walletOpen = !this.walletOpen;
     this.walletPinned = this.walletOpen;
+    if (this.walletOpen) {
+      this.charging = false;
+      this.power = 0;
+    }
   }
 
   /** Look-down opens an unpinned wallet. Looking up closes it unless E-pinned. */
@@ -941,6 +956,8 @@ export class Session {
       if (!this.walletOpen) {
         this.walletOpen = true;
         this.walletPinned = false;
+        this.charging = false;
+        this.power = 0;
       }
       return;
     }

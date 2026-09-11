@@ -4,6 +4,8 @@ import { heightAt } from "./physics";
 /** Classic skee-ball table in meters. Thrower stands at +Z looking −Z. */
 export const PLAY_Y = 0.86;
 export const HALF_W = 0.34;
+/** Playable half-width on the scoring head (meters). 100s at ±0.46 sit inside this. */
+export const FACE_HALF = 0.52;
 export const BALL_R3 = 0.048;
 export const THROW_Z = 1.18;
 export const CAB_W = 1.08;
@@ -14,7 +16,7 @@ export const RAMP_RISE = 0.44;
 /** Lean back from vertical so the face reads to the thrower. */
 export const BOARD_LEAN = 0.18;
 /** Circular target on the wooden head. Center = 50-point cup. */
-export const FACE_R = 0.5;
+export const FACE_R = 0.56;
 export const FACE_CY = 0.54;
 export const HEAD_W = 1.22;
 export const HEAD_H = 1.36;
@@ -32,7 +34,7 @@ export const COL = {
 } as const;
 
 /** Concentric ring radii on the face (board-local, centered at FACE_CY). */
-export const SKEE_RINGS = [0.48, 0.36, 0.25, 0.15];
+export const SKEE_RINGS = [0.54, 0.4, 0.28, 0.16];
 
 /**
  * Real skee-ball anatomy (Skee-Ball Inc / arcade target):
@@ -60,6 +62,7 @@ export const SKEE_CUPS: Array<{
 ];
 
 export function xWorld(lane: LaneDef, x: number) {
+  if (usesBackboard(lane.theme)) return x;
   return (x / lane.rail) * HALF_W;
 }
 
@@ -115,9 +118,9 @@ export function faceToLane(lane: LaneDef, lx: number, ly: number, r: number) {
   const u = Math.max(0, Math.min(1, (ly - 0.08) / 0.98));
   const t = RAMP_T + u * (1 - RAMP_T);
   return {
-    x: (lx / HALF_W) * lane.rail,
+    x: lx,
     y: lane.lipY + t * (lane.length - lane.lipY),
-    r: r * 0.85,
+    r,
   };
 }
 
@@ -151,14 +154,19 @@ export function ballWorld(lane: LaneDef, b: { x: number; y: number; z: number })
   const t = postLipT(lane, b.y);
   if (t < RAMP_T) {
     const u = Math.max(0, t) / RAMP_T;
+    const s = u * u * (3 - 2 * u);
     return {
       x,
-      y: PLAY_Y + BALL_R3 + u * RAMP_RISE + air * 0.45,
-      z: rampStartZ() - u * RAMP_RUN,
+      y: PLAY_Y + BALL_R3 + s * RAMP_RISE + air * 0.45,
+      z: rampStartZ() - s * RAMP_RUN,
     };
   }
   const ly = faceLocalY(lane, b.y);
-  return boardLocalToWorld(x, ly, BALL_R3 + 0.03 + air * 0.35);
+  if (air > 0.03) {
+    const face = boardLocalToWorld(x, ly, BALL_R3);
+    return { x: face.x, y: face.y + air * 0.55, z: face.z };
+  }
+  return boardLocalToWorld(x, ly, BALL_R3 + 0.03);
 }
 
 export function holeWorld(lane: LaneDef, hole: Hole) {

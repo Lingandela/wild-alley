@@ -99,6 +99,8 @@ export function heightAt(x: number, y: number, hills: Hill[]) {
 
 export type World = {
   rail: number;
+  alleyRail?: number;
+  faceRail?: number;
   length: number;
   lipY: number;
   segs: Seg[];
@@ -210,16 +212,17 @@ export function stepBall(
       if (rf.hit && rf.speedIn > 0.4) hits.push({ kind: "wall", x: b.x, y: b.y, mag: rf.speedIn });
     }
 
-    if (b.x < -world.rail + b.r) {
-      b.x = -world.rail + b.r;
+    const side = b.y > world.lipY ? (world.faceRail ?? world.rail) : (world.alleyRail ?? world.rail);
+    if (b.x < -side + b.r) {
+      b.x = -side + b.r;
       if (b.vx < 0) {
         const rf = reflect(b.vx, b.vy, 1, 0, rest * 0.55);
         b.vx = rf.vx;
         b.vy = rf.vy;
       }
     }
-    if (b.x > world.rail - b.r) {
-      b.x = world.rail - b.r;
+    if (b.x > side - b.r) {
+      b.x = side - b.r;
       if (b.vx > 0) {
         const rf = reflect(b.vx, b.vy, -1, 0, rest * 0.55);
         b.vx = rf.vx;
@@ -304,10 +307,11 @@ export function stepBall(
   return hits;
 }
 
-export function railsFor(rail: number, length: number): Seg[] {
-  return [
+export function railsFor(rail: number, length: number, opts?: { cap?: boolean }): Seg[] {
+  const segs: Seg[] = [
     { ax: -rail, ay: 0.02, bx: -rail, by: length },
     { ax: rail, ay: 0.02, bx: rail, by: length },
-    { ax: -rail, ay: length, bx: rail, by: length },
   ];
+  if (opts?.cap !== false) segs.push({ ax: -rail, ay: length, bx: rail, by: length });
+  return segs;
 }

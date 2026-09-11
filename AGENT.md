@@ -34,12 +34,14 @@ A first-person 3D skee-ball carnival in the browser.
 - Vite via `npm run dev` (binds `0.0.0.0:8080`)
 
 Dev: `npm install && npm run dev`  
-Check: `npm run typecheck` && `npm run build`
+Check: `npm run typecheck` && `npm run build`  
+Logic: `node --experimental-strip-types --import ./scripts/register-ts.mjs --test scripts/game-foundations.test.mjs`
 
 ## File map
 
 ```
 src/game/session.ts          phases, scoring, tickets, sit/stand, wallet flags
+src/game/foundations.ts      capture height, delayed split, face mapping, labels
 src/game/physics.ts          2D ball integration
 src/game/layout3d.ts         meters, skee cups, ballWorld / seatEye
 src/game/lanes.ts            five alley defs

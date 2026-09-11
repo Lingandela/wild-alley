@@ -86,7 +86,7 @@ export function Player({ game }: { game: WildAlleyGame }) {
     s.pointerLocked = game.input.locked;
     const seated = s.seated && s.screen === "play" && s.phase !== "bonus";
 
-    if (!s.paused) {
+    if (!s.paused && !s.walletOpen) {
       const m = game.input.consumeLook();
       s.lookYaw -= m.x * SENS;
       s.lookPitch -= m.y * SENS;

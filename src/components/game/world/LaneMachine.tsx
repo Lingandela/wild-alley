@@ -83,6 +83,26 @@ function DropCrate({ x, y, z, w, hh, d }: { x: number; y: number; z: number; w: 
   );
 }
 
+function makeSkeeShape(holes: LaneDef["holes"]) {
+  const shape = new THREE.Shape();
+  shape.absarc(0, FACE_CY, FACE_R, 0, Math.PI * 2, false);
+  for (const h of holes) {
+    const lx = h.faceX ?? 0;
+    const ly = h.faceY ?? FACE_CY;
+    const r = (h.faceR ?? h.r) * 0.95;
+    if (Math.hypot(lx, ly - FACE_CY) + r > FACE_R - 0.012) continue;
+    const hole = new THREE.Path();
+    hole.absarc(lx, ly, r, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+  }
+  return shape;
+}
+
+function SkeeFaceDisk({ holes, material }: { holes: LaneDef["holes"]; material: THREE.Material }) {
+  const geo = useMemo(() => new THREE.ShapeGeometry(makeSkeeShape(holes), 56), [holes]);
+  return <mesh geometry={geo} position={[0, 0, 0.012]} material={material} />;
+}
+
 function Num({ text, position, w = 0.16, h = 0.1 }: { text: string; position: [number, number, number]; w?: number; h?: number }) {
   const mat = useMemo(
     () =>
@@ -105,7 +125,6 @@ function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
   const w = holeWorld(lane, h);
   const col = holeRing(h.value);
   const wall = retro("#c4a078", { emissive: "#8a5a38", emissiveIntensity: 0.4 });
-  const floor = retro("#efe6d4", { emissive: "#efe6d4", emissiveIntensity: 0.55 });
   const rim = retro("#fff6e4", { emissive: col, emissiveIntensity: 0.75 });
   const label = String(h.label ?? h.value);
   const plate = useMemo(() => {
@@ -119,7 +138,7 @@ function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
     return (
       <group position={[w.x, w.y, w.z]}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={wall}>
-          <cylinderGeometry args={[w.r * 0.9, w.r * 0.72, 0.06, 14]} />
+          <cylinderGeometry args={[w.r * 0.9, w.r * 0.72, 0.06, 14, 1, true]} />
         </mesh>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} material={rim}>
           <ringGeometry args={[w.r * 0.7, w.r * 1.12, 16]} />
@@ -131,14 +150,11 @@ function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
   const side = (h.faceX ?? 0) !== 0 ? Math.sign(h.faceX!) * (w.r + 0.14) : w.r + 0.14;
   return (
     <group position={[w.lx, w.ly, 0.03]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.015]} material={wall}>
-        <cylinderGeometry args={[w.r * 0.7, w.r * 0.55, 0.04, 16]} />
-      </mesh>
-      <mesh position={[0, 0, -0.03]} material={floor}>
-        <circleGeometry args={[w.r * 0.55, 14]} />
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.05]} material={wall}>
+        <cylinderGeometry args={[w.r * 0.96, w.r * 0.8, 0.12, 18, 1, true]} />
       </mesh>
       <mesh material={rim}>
-        <ringGeometry args={[w.r * 0.55, w.r * 1.22, 22]} />
+        <ringGeometry args={[w.r * 0.72, w.r * 1.18, 22]} />
       </mesh>
       <mesh position={[side, 0, 0.012]} material={plate}>
         <planeGeometry args={[0.16, 0.11]} />
@@ -280,16 +296,19 @@ export function LaneMachine({
     () => retroSign("#efe6d4", { map: paintSign(lane.name.toUpperCase(), 512, 96), emissive: "#c47a3a", emissiveIntensity: 0.7 }),
     [lane.name],
   );
-  const lastBump = useRef(0);
-  const bumpHit = () => {
-    const t = game.session.time;
-    if (t - lastBump.current < 0.1) return;
-    lastBump.current = t;
-    game.session.bumperChips += 8;
-    game.audio.bumper();
-    game.juice.addTrauma(0.1);
-  };
   const lamps = useRef<THREE.Mesh[]>([]);
+  const lampMats = useMemo(
+    () =>
+      Array.from({ length: 8 }, () =>
+        new THREE.MeshLambertMaterial({
+          color: "#2a1814",
+          emissive: "#c45c48",
+          emissiveIntensity: 0.05,
+          flatShading: true,
+        }),
+      ),
+    [],
+  );
   useFrame(() => {
     const p = game.session.charging ? game.session.power : 0;
     const n = Math.round(p * 8);
@@ -297,7 +316,8 @@ export function LaneMachine({
       const m = lamps.current[i];
       if (!m) continue;
       const on = i < n;
-      const mat = m.material as THREE.MeshLambertMaterial;
+      const mat = lampMats[i];
+      if (!mat) continue;
       mat.emissiveIntensity = on ? 0.95 : 0.05;
       mat.color.set(on ? "#c45c48" : "#2a1814");
     }
@@ -371,14 +391,13 @@ export function LaneMachine({
           <mesh position={[0, HEAD_H - 0.02, -0.04]} material={stripe}>
             <boxGeometry args={[HEAD_W + 0.04, 0.08, 0.22]} />
           </mesh>
-          <mesh position={[0, FACE_CY, 0.012]} material={faceMat}>
-            <circleGeometry args={[FACE_R, 40]} />
-          </mesh>
-          <mesh position={[0, FACE_CY, 0.03]} rotation={[Math.PI / 2, 0, 0]} material={body}>
+          <SkeeFaceDisk holes={lane.holes} material={faceMat} />
+          <mesh position={[0, FACE_CY, 0.03]}>
             <torusGeometry args={[FACE_R + 0.035, 0.038, 8, 32]} />
+            <meshLambertMaterial color="#6a241c" flatShading />
           </mesh>
           {SKEE_RINGS.map((r) => (
-            <mesh key={r} position={[0, FACE_CY, 0.032]} rotation={[Math.PI / 2, 0, 0]} material={ringMat}>
+            <mesh key={r} position={[0, FACE_CY, 0.028]} material={ringMat}>
               <torusGeometry args={[r, 0.016, 8, 32]} />
             </mesh>
           ))}
@@ -411,7 +430,7 @@ export function LaneMachine({
             if (el) lamps.current[i] = el;
           }}
           position={[-0.245 + i * 0.07, PLAY_Y + 0.02, THROW_Z + 0.1]}
-          material={retro("#2a1814", { emissive: "#c45c48", emissiveIntensity: 0.05 })}
+          material={lampMats[i]}
         >
           <boxGeometry args={[0.055, 0.014, 0.028]} />
         </mesh>
@@ -443,7 +462,7 @@ export function LaneMachine({
         const col = i % 2 ? "#c47a3a" : "#c45c48";
         return (
           <PopIn key={`b${i}`} delay={i * 0.06}>
-            <RigidBody type="fixed" colliders={false} position={[w.x, w.y, w.z]} collisionGroups={STATIC} onCollisionEnter={bumpHit}>
+            <RigidBody type="fixed" colliders={false} position={[w.x, w.y, w.z]} collisionGroups={STATIC}>
               <CylinderCollider args={[0.1, w.r]} />
               <mesh material={retro(col, { emissive: col, emissiveIntensity: 0.5 })}>
                 <cylinderGeometry args={[w.r, w.r, 0.2, 8]} />

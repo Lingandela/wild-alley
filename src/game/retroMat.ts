@@ -25,9 +25,16 @@ function snapify(mat: THREE.MeshLambertMaterial, grid = 112) {
 
 export function retro(
   color: string,
-  extras?: { emissive?: string; emissiveIntensity?: number; transparent?: boolean; opacity?: number; side?: THREE.Side },
+  extras?: {
+    emissive?: string;
+    emissiveIntensity?: number;
+    transparent?: boolean;
+    opacity?: number;
+    side?: THREE.Side;
+    snap?: boolean;
+  },
 ) {
-  const key = `${color}|${extras?.emissive ?? ""}|${extras?.emissiveIntensity ?? 0}|${extras?.opacity ?? 1}|${extras?.side ?? 0}`;
+  const key = `${color}|${extras?.emissive ?? ""}|${extras?.emissiveIntensity ?? 0}|${extras?.opacity ?? 1}|${extras?.side ?? 0}|${extras?.snap ? 1 : 0}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const m = new THREE.MeshLambertMaterial({
@@ -39,7 +46,7 @@ export function retro(
     opacity: extras?.opacity ?? 1,
     side: extras?.side ?? THREE.FrontSide,
   });
-  snapify(m);
+  if (extras?.snap) snapify(m);
   immortal(m);
   cache.set(key, m);
   return m;
@@ -57,7 +64,7 @@ export function retroMapped(
     emissive: extras?.emissive ?? "#000000",
     emissiveIntensity: extras?.emissiveIntensity ?? 0,
   });
-  if (extras?.snap !== false) snapify(m);
+  if (extras?.snap) snapify(m);
   return immortal(m);
 }
 
@@ -296,13 +303,13 @@ export function paintTearTicket(name: string, type: string, text: string, select
 }
 
 const TYPE_FACE: Record<string, { bg: string; ink: string; band: string }> = {
-  ball: { bg: "#3d2a1c", ink: "#efe6d4", band: "#c47a3a" },
-  lane: { bg: "#5a1c1c", ink: "#efe6d4", band: "#c45c48" },
-  score: { bg: "#4a3010", ink: "#ffe6b0", band: "#d4a04a" },
-  sabotage: { bg: "#1c1014", ink: "#f0c8c0", band: "#c45c48" },
+  ball: { bg: "#f3e6c8", ink: "#3a2418", band: "#c45c48" },
+  lane: { bg: "#efe0b8", ink: "#3a1810", band: "#c47a3a" },
+  score: { bg: "#f0dca8", ink: "#3a280c", band: "#d4a04a" },
+  sabotage: { bg: "#e8d0c0", ink: "#4a1010", band: "#8a2820" },
 };
 
-/** Landscape plastic card that sits in a bifold slot (ISO ID-1 ratio). */
+/** Perforated paper stub that sits in a bifold slot. */
 export function paintWalletCard(name: string, type: string, text: string, selected = false) {
   const key = `wcard|${name}|${type}|${text}|${selected}`;
   const hit = signCache.get(key);
@@ -336,20 +343,32 @@ export function paintWalletCard(name: string, type: string, text: string, select
   g.font = "700 13px Georgia, serif";
   g.fillText(selected ? "ACTIVE" : "TEAR TO PLAY", w - 22, 36);
 
-  g.fillStyle = "#d4b060";
+  g.fillStyle = pal.band;
   g.fillRect(28, 98, 64, 50);
-  g.fillStyle = "#8a6a28";
-  g.fillRect(34, 104, 52, 16);
-  g.fillRect(34, 126, 28, 16);
-  g.fillStyle = "#1a1010";
-  g.fillRect(0, 168, w, 28);
+  g.fillStyle = pal.bg;
+  g.font = "700 11px ui-monospace, monospace";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText("STUB", 60, 123);
+  g.textBaseline = "alphabetic";
+  g.strokeStyle = pal.ink;
+  g.globalAlpha = 0.35;
+  g.setLineDash([5, 6]);
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(16, 168);
+  g.lineTo(w - 16, 168);
+  g.stroke();
+  g.setLineDash([]);
+  g.globalAlpha = 1;
 
   g.fillStyle = pal.ink;
   g.textAlign = "left";
   g.font = "700 36px Georgia, serif";
   g.fillText(name.toUpperCase().slice(0, 18), 22, 232);
 
-  g.fillStyle = "rgba(239,230,212,0.75)";
+  g.fillStyle = pal.ink;
+  g.globalAlpha = 0.78;
   g.font = "14px Georgia, serif";
   const bits = text.split(" ");
   let line = "";
@@ -366,18 +385,20 @@ export function paintWalletCard(name: string, type: string, text: string, select
     } else line = next;
   }
   if (line && lines < 2) g.fillText(line, 22, ty);
+  g.globalAlpha = 1;
 
-  g.fillStyle = "#d4b060";
-  g.fillRect(w - 78, 92, 52, 52);
-  g.strokeStyle = "#efe6d4";
-  g.lineWidth = 3;
-  g.beginPath();
-  g.arc(w - 52, 118, 16, 0, Math.PI * 2);
-  g.stroke();
+  g.fillStyle = pal.band;
+  g.globalAlpha = 0.85;
+  g.fillRect(w - 86, 92, 62, 48);
+  g.globalAlpha = 1;
+  g.fillStyle = pal.bg;
+  g.font = "700 13px Georgia, serif";
+  g.textAlign = "center";
+  g.fillText("WA", w - 55, 116);
   g.font = "700 11px ui-monospace, monospace";
   g.fillStyle = "#8a6a48";
   g.textAlign = "right";
-  g.fillText(`•••• ${String(name.length * 17 + 4200).slice(-4)}`, w - 22, h - 22);
+  g.fillText(`№ ${String(name.length * 17 + 4200).slice(-4)}`, w - 22, h - 22);
 
   if (selected) {
     g.strokeStyle = "#c47a3a";
@@ -532,7 +553,7 @@ export function holeRing(value: number) {
 }
 
 export function paintSkeeFace() {
-  const key = "skeeface-v4";
+  const key = "skeeface-v5";
   const hit = signCache.get(key);
   if (hit) return hit;
   const s = 1024;
@@ -585,7 +606,7 @@ export function paintSkeeFace() {
   }
 
   const FACE_CY = 0.54;
-  const FACE_R = 0.5;
+  const FACE_R = 0.56;
   const toC = (lx: number, ly: number) => ({
     x: cx + (lx / FACE_R) * R,
     y: cy - ((ly - FACE_CY) / FACE_R) * R,

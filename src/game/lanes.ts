@@ -13,7 +13,7 @@ export const LANES: LaneDef[] = [
     theme: "classic",
     length: 2.58,
     width: 1,
-    rail: 0.4,
+    rail: 0.52,
     lipY: 1.05,
     holes: [],
     bumpers: [],

@@ -44,11 +44,9 @@ function SlotCard({
   );
   const face = useMemo(
     () =>
-      new THREE.MeshLambertMaterial({
+      new THREE.MeshBasicMaterial({
         map,
         color: "#ffffff",
-        emissive: "#3a2a20",
-        emissiveIntensity: 0.45,
       }),
     [map],
   );
@@ -167,11 +165,9 @@ export function Wallet({
   const idMap = useMemo(() => paintIdCard(s.names[s.player] ?? "Ace"), [s.names, s.player]);
   const idMat = useMemo(
     () =>
-      new THREE.MeshLambertMaterial({
+      new THREE.MeshBasicMaterial({
         map: idMap,
         color: "#ffffff",
-        emissive: "#1a1410",
-        emissiveIntensity: 0.25,
       }),
     [idMap],
   );
@@ -179,11 +175,9 @@ export function Wallet({
     () =>
       ([5, 1, 10] as const).map((n, i) => ({
         n,
-        mat: new THREE.MeshLambertMaterial({
+        mat: new THREE.MeshBasicMaterial({
           map: paintBill(n),
           color: "#ffffff",
-          emissive: "#1a2018",
-          emissiveIntensity: 0.2,
         }),
         rot: -0.18 + i * 0.16,
         y: -0.028 + i * 0.004,
@@ -207,10 +201,10 @@ export function Wallet({
     g.visible = true;
     g.position.copy(camera.position);
     g.quaternion.copy(camera.quaternion);
-    _off.set(0, -0.18 - (1 - k) * 0.1, -0.42);
+    _off.set(0, -0.24 - (1 - k) * 0.08, -0.36);
     _off.applyQuaternion(camera.quaternion);
     g.position.add(_off);
-    _euler.set(-0.55 + (1 - k) * 0.5, 0, 0);
+    _euler.set(-0.28 + (1 - k) * 0.35, 0, 0);
     _tilt.setFromEuler(_euler);
     g.quaternion.multiply(_tilt);
     g.scale.setScalar(0.95 + k * 0.08);

@@ -263,8 +263,8 @@ function Sim({ game }: { game: WildAlleyGame }) {
     if (lookingDown) s.setLookWallet(true);
     else if (s.lookPitch > -0.22) s.setLookWallet(false);
 
-    game.input.blockLock = s.walletOpen && s.walletPinned;
-    if (s.walletPinned && s.walletOpen && document.pointerLockElement) document.exitPointerLock();
+    game.input.blockLock = s.walletOpen;
+    if (s.walletOpen && document.pointerLockElement) document.exitPointerLock();
 
     const qNow = game.input.has("KeyQ");
     if (qNow && !qHeld.current) {
@@ -311,9 +311,10 @@ function Sim({ game }: { game: WildAlleyGame }) {
     if (!wantThrow) chargeLock.current = false;
 
     if (s.phase === "aim" && !s.walletOpen && s.seated && !chargeLock.current) {
+      const rail = s.world.alleyRail ?? s.lane.rail;
       const steer = (game.input.left() ? -1 : 0) + (game.input.right() ? 1 : 0);
       s.aimX += steer * 0.55 * dt;
-      s.aimX = Math.max(-s.lane.rail + 0.08, Math.min(s.lane.rail - 0.08, s.aimX));
+      s.aimX = Math.max(-rail + 0.08, Math.min(rail - 0.08, s.aimX));
       if (game.input.left()) s.nudgeHeading(2.5 * dt);
       if (game.input.right()) s.nudgeHeading(-2.5 * dt);
       if (s.balls[0]) {
@@ -327,8 +328,8 @@ function Sim({ game }: { game: WildAlleyGame }) {
         const drag = (game.input.py - game.input.sy) / Math.max(1, gl.domElement.height);
         s.power = Math.min(1, Math.max(0, drag * 2.4));
         s.charging = true;
-        const nx = (game.input.px / Math.max(1, gl.domElement.width) - 0.5) * s.lane.rail * 2;
-        s.aimX = Math.max(-s.lane.rail + 0.08, Math.min(s.lane.rail - 0.08, nx));
+        const nx = (game.input.px / Math.max(1, gl.domElement.width) - 0.5) * rail * 2;
+        s.aimX = Math.max(-rail + 0.08, Math.min(rail - 0.08, nx));
       } else if (s.charging && !game.input.pointerDown && !game.input.up()) {
         if (s.power > 0.14) {
           const split = s.flags.split;

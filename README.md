@@ -20,6 +20,7 @@ Then open the URL Vite prints (dev binds `0.0.0.0:8080`).
 ```bash
 npm run typecheck
 npm run build
+node --experimental-strip-types --import ./scripts/register-ts.mjs --test scripts/game-foundations.test.mjs
 ```
 
 Node 22. Auth and a database are **off** — scores live in `localStorage`.
@@ -47,6 +48,7 @@ The **play ball is not a Rapier body.** Simulation is 2D (`session.stepRoll` →
 | Path | What it is |
 |---|---|
 | [`src/game/session.ts`](src/game/session.ts) | Phases, scoring, cards, throw/roll — the authority |
+| [`src/game/foundations.ts`](src/game/foundations.ts) | Capture height, delayed split, shared face mapping |
 | [`src/game/physics.ts`](src/game/physics.ts) | Ball step on the 2D lane |
 | [`src/game/layout3d.ts`](src/game/layout3d.ts) | 2D lane → 3D table |
 | [`src/game/lanes.ts`](src/game/lanes.ts) | The five alleys |

@@ -1,9 +1,12 @@
 import type { Hole, LaneDef } from "./types";
 import { skeeHolesFor } from "./layout3d";
+import { classicLaneDims } from "./machine";
 
 function cup(x: number, y: number, r: number, value: number, extra?: Partial<Hole>): Hole {
   return { x, y, r, value, ...extra };
 }
+
+const classic = classicLaneDims();
 
 export const LANES: LaneDef[] = [
   {
@@ -11,10 +14,10 @@ export const LANES: LaneDef[] = [
     name: "The Fairground",
     blurb: "A honest alley. Until it isn't.",
     theme: "classic",
-    length: 2.58,
+    length: classic.length,
     width: 1,
-    rail: 0.52,
-    lipY: 1.05,
+    rail: classic.rail,
+    lipY: classic.lipY,
     holes: [],
     bumpers: [],
     pegs: [],

@@ -126,6 +126,7 @@ export function makeBall(x: number, y: number, r = 0.036): Ball {
     scored: false,
     rest: 0,
     superSkip: false,
+    stage: "roll",
   };
 }
 

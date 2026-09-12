@@ -21,6 +21,7 @@ import { makeBall, railsFor, stepBall, type HitEvent, type World } from "./physi
 import { makePinball, makePlinko, type BonusBoard } from "./bonus";
 import { FACE_HALF, HALF_W, SEAT, SPAWN, usesBackboard } from "./layout3d";
 import { applyWide, canCapture, shouldSplitNow, syncHoleLabels } from "./foundations";
+import { applyLaunch, isInTransit, stepMachine, usesFlight } from "./machine";
 
 /**
  * Session is the authority. snapshot() is the full public state a future
@@ -499,15 +500,22 @@ export class Session {
   launch(power: number, vx: number) {
     const p = Math.max(0.12, Math.min(1, power));
     const ball = this.balls[0] ?? makeBall(this.aimX, 0.12, BALL_R);
-    ball.x = this.aimX;
-    ball.y = 0.12;
-    ball.z = 0;
-    ball.vx = vx;
-    ball.vy = (1.55 + p * 3.05) * this.flags.launchScale;
-    ball.alive = true;
-    ball.scored = false;
-    ball.rest = 0;
-    ball.superSkip = this.flags.superball;
+    if (usesFlight(this.lane.theme)) {
+      applyLaunch(ball, p, this.aimX, vx, this.flags.launchScale);
+      ball.superSkip = this.flags.superball;
+    } else {
+      ball.x = this.aimX;
+      ball.y = 0.12;
+      ball.z = 0;
+      ball.vx = vx;
+      ball.vy = (1.55 + p * 3.05) * this.flags.launchScale;
+      ball.vz = 0;
+      ball.alive = true;
+      ball.scored = false;
+      ball.rest = 0;
+      ball.stage = "roll";
+      ball.superSkip = this.flags.superball;
+    }
     this.balls = [ball];
     this.splitSpawned = false;
     if (this.flags.split) {
@@ -557,6 +565,21 @@ export class Session {
 
   tryCapture(b: Ball): boolean {
     if (b.scored || !b.alive) return false;
+    if (usesFlight(this.lane.theme)) {
+      if (b.stage !== "sink") return false;
+      const h =
+        this.lane.holes.find(
+          (hole) =>
+            Math.abs((hole.faceX ?? hole.x) - (b.faceX ?? 99)) < 1e-4 &&
+            Math.abs((hole.faceY ?? hole.y) - (b.faceY ?? 99)) < 1e-4,
+        ) ?? null;
+      if (!h) return false;
+      this.sinkHole(h, b);
+      b.alive = true;
+      b.scored = true;
+      b.stage = "sink";
+      return true;
+    }
     for (const h of this.lane.holes) {
       if (!canCapture(b, h)) continue;
       if (b.superSkip) {
@@ -617,8 +640,19 @@ export class Session {
       wellX: undefined as number | undefined,
       wellY: undefined as number | undefined,
     };
+    const flight = usesFlight(this.lane.theme);
     for (const b of this.balls) {
-      if (!b.alive || b.scored) continue;
+      if (!b.alive) continue;
+      if (flight) {
+        if (b.scored && b.stage !== "sink" && b.stage !== "trough") continue;
+        const wasSink = b.stage === "sink";
+        const airWind = extrasBase.windX + (extra.left ? -0.55 : 0) + (extra.right ? 0.55 : 0);
+        const hits = stepMachine(b, this.lane.holes, this.flags, { windX: airWind }, dt);
+        this.hitQueue.push(...hits);
+        if (b.stage === "sink" && !wasSink) this.tryCapture(b);
+        continue;
+      }
+      if (b.scored) continue;
       if (this.flags.magnet) {
         const h = this.nearestHole(b.x, b.y);
         if (h) {
@@ -648,6 +682,7 @@ export class Session {
       twin.vy = lead.vy * 0.94;
       twin.z = lead.z;
       twin.vz = lead.vz;
+      twin.stage = lead.stage;
       twin.superSkip = this.flags.superball;
       this.balls.push(twin);
       this.splitSpawned = true;
@@ -684,32 +719,47 @@ export class Session {
 
   stepRoll(dt: number, input: { left: boolean; right: boolean; up: boolean }) {
     const steer = ((input.left ? -1 : 0) + (input.right ? 1 : 0)) * this.lane.steer;
+    const flight = usesFlight(this.lane.theme);
     if (input.up) {
-      for (const b of this.balls) if (b.alive && !b.scored) b.vy += 1.55 * dt;
+      for (const b of this.balls) {
+        if (!b.alive || b.scored) continue;
+        if (flight && b.stage !== "roll") continue;
+        b.vy += 1.55 * dt;
+      }
     }
     this.stepRolling(dt, { left: input.left, right: input.right, up: input.up, wind: steer });
-    if (this.pendingSpecial && this.balls.every((b) => b.scored || !b.alive)) {
+    if (this.pendingSpecial && this.balls.every((b) => (b.scored || !b.alive) && !isInTransit(b))) {
       this.enterBonus(this.pendingSpecial);
       return;
     }
-    const live = this.balls.filter((b) => b.alive && !b.scored);
-    if (live.length === 0) {
+    const live = this.balls.filter((b) => b.alive && !b.scored && b.stage !== "trough" && b.stage !== "sink");
+    const transit = this.balls.some((b) => isInTransit(b));
+    if (live.length === 0 && !transit) {
       this.beginTally();
       return;
     }
     let moving = false;
     for (const b of live) {
-      const spd = Math.hypot(b.vx, b.vy);
+      const spd = Math.hypot(b.vx, b.vy, b.vz);
       if (spd < 0.09) b.rest += dt;
       else b.rest = 0;
-      if (b.y < -0.05 || (b.y < 0.18 && spd < 0.12 && b.rest > 0.4)) {
-        b.alive = false;
-        this.justSank = "gutter";
+      if (b.y < -0.05 || (b.y < 0.18 && spd < 0.12 && b.rest > 0.4 && (b.stage === "roll" || !b.stage))) {
+        if (flight) {
+          b.stage = "trough";
+          b.troughT = 0;
+          this.justSank = "gutter";
+        } else {
+          b.alive = false;
+          this.justSank = "gutter";
+        }
       }
       if (spd > 0.1) moving = true;
     }
-    if (!moving && this.phaseT > 0.8 && live.every((b) => b.rest > 0.5)) this.beginTally();
-    if (this.phaseT > 14) this.beginTally();
+    for (const b of this.balls) {
+      if (b.stage === "trough" && !b.scored && (b.troughT ?? 0) < 0.08) this.justSank = this.justSank ?? "gutter";
+    }
+    if (!transit && !moving && this.phaseT > 0.8 && live.every((b) => b.rest > 0.5)) this.beginTally();
+    if (this.phaseT > 16) this.beginTally();
   }
 
   stepMeta(dt: number) {

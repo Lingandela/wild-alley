@@ -7,6 +7,7 @@ import type { WildAlleyGame } from "@/game/game";
 import { paintSign, retro, useArcadeTextures } from "@/game/retroMat";
 import { BALL_R3, BOARD_LEAN, CAB_FRONT, HEAD_H, SPAWN, THROW_Z, boardLocalToWorld, nearCabinet } from "@/game/layout3d";
 import { LOOK_BOARD, isLookingAtLap } from "@/game/foundations";
+import { usesFlight } from "@/game/machine";
 import { Room } from "./Room";
 import { LaneMachine } from "./LaneMachine";
 import { Wallet } from "./Wallet";
@@ -218,7 +219,7 @@ function ScoreLamp({ game }: { game: WildAlleyGame }) {
     mat.emissiveMap = map;
     mat.needsUpdate = true;
   });
-  const p = boardLocalToWorld(0, HEAD_H + 0.08, 0.04);
+  const p = boardLocalToWorld(0, HEAD_H + 0.08, 0.04, game.session.lane.theme);
   return (
     <group position={[p.x, p.y, p.z]} rotation={[-BOARD_LEAN, 0, 0]}>
       <mesh position={[0, 0, -0.04]} material={retro("#2a1410")}>
@@ -316,7 +317,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
       const rail = s.world.alleyRail ?? s.lane.rail;
       const steer = (game.input.left() ? -1 : 0) + (game.input.right() ? 1 : 0);
       s.aimX += steer * 0.55 * dt;
-      s.aimX = Math.max(-rail + 0.08, Math.min(rail - 0.08, s.aimX));
+      s.aimX = Math.max(-rail + 0.05, Math.min(rail - 0.05, s.aimX));
       if (game.input.left()) s.nudgeHeading(2.5 * dt);
       if (game.input.right()) s.nudgeHeading(-2.5 * dt);
       if (s.balls[0]) {
@@ -331,11 +332,12 @@ function Sim({ game }: { game: WildAlleyGame }) {
         s.power = Math.min(1, Math.max(0, drag * 2.4));
         s.charging = true;
         const nx = (game.input.px / Math.max(1, gl.domElement.width) - 0.5) * rail * 2;
-        s.aimX = Math.max(-rail + 0.08, Math.min(rail - 0.08, nx));
+        s.aimX = Math.max(-rail + 0.05, Math.min(rail - 0.05, nx));
       } else if (s.charging && !game.input.pointerDown && !game.input.up()) {
         if (s.power > 0.14) {
           const split = s.flags.split;
-          s.launch(s.power, s.aimX * 0.22);
+          const extra = usesFlight(s.lane.theme) ? 0 : s.aimX * 0.22;
+          s.launch(s.power, extra);
           if (split) game.audio.split();
           else game.audio.whoosh(s.power);
           game.onUi();
@@ -346,7 +348,7 @@ function Sim({ game }: { game: WildAlleyGame }) {
         s.charging = true;
         s.power = Math.min(1, s.power + dt * 0.95);
       } else if (s.charging && s.power > 0.1 && !game.input.pointerDown) {
-        s.launch(s.power, s.aimX * 0.25);
+        s.launch(s.power, usesFlight(s.lane.theme) ? 0 : s.aimX * 0.25);
         if (s.flags.split) game.audio.split();
         else game.audio.whoosh(s.power);
         game.onUi();

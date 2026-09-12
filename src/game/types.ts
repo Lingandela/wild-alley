@@ -67,6 +67,8 @@ export type LaneDef = {
   oil?: { x: number; y: number; r: number };
 };
 
+export type BallStage = "roll" | "air" | "face" | "sink" | "trough";
+
 export type Ball = {
   x: number;
   y: number;
@@ -80,6 +82,11 @@ export type Ball = {
   scored: boolean;
   rest: number;
   superSkip: boolean;
+  stage?: BallStage;
+  faceX?: number;
+  faceY?: number;
+  sinkT?: number;
+  troughT?: number;
 };
 
 export type Phase =
@@ -165,7 +172,7 @@ export type ThrowFlags = {
 };
 
 export const BALL_R = 0.036;
-export const MAX_SPEED = 6.2;
+export const MAX_SPEED = 9;
 export const BALLS_CARNIVAL = 3;
 export const BALLS_VERSUS = 3;
 export const LANES_CARNIVAL = 5;

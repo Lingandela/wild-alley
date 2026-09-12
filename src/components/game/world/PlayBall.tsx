@@ -6,6 +6,7 @@ import { BALL_R3, ballWorld } from "@/game/layout3d";
 import { makeBall, stepBall } from "@/game/physics";
 import { BALL_R } from "@/game/types";
 import { retro } from "@/game/retroMat";
+import { simulateThrow, usesFlight } from "@/game/machine";
 
 type Look = "wood" | "heavy" | "superball" | "magnet" | "grease" | "anchor" | "lucky";
 
@@ -87,6 +88,35 @@ function AimGhost({ game }: { game: WildAlleyGame }) {
     inst.visible = show;
     if (!show) return;
     const p = s.charging ? Math.max(0.18, s.power) : 0.42;
+    if (usesFlight(s.lane.theme)) {
+      const ghost = simulateThrow({
+        power: p,
+        aimX: s.aimX,
+        holes: s.lane.holes,
+        flags: s.flags,
+        dt: 0.038,
+        maxTime: 1.4,
+        record: true,
+      });
+      const n = 18;
+      for (let i = 0; i < n; i++) {
+        const sample = ghost.path[Math.min(ghost.path.length - 1, Math.floor((i / n) * ghost.path.length))] ?? ghost.path[0];
+        if (!sample) {
+          dummy.scale.setScalar(0);
+          dummy.updateMatrix();
+          inst.setMatrixAt(i, dummy.matrix);
+          continue;
+        }
+        const w = ballWorld(s.lane, sample);
+        dummy.position.set(w.x, w.y + 0.01, w.z);
+        const sc = (s.charging ? 1 : 0.55) * (1 - i / n) * 0.9;
+        dummy.scale.setScalar(Math.max(0.2, sc));
+        dummy.updateMatrix();
+        inst.setMatrixAt(i, dummy.matrix);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      return;
+    }
     const b = makeBall(s.aimX, 0.12, BALL_R);
     b.vy = (1.55 + p * 3.05) * s.flags.launchScale;
     b.vx = s.aimX * 0.22;
@@ -133,7 +163,7 @@ export function PlayBall({ game }: { game: WildAlleyGame }) {
         continue;
       }
       const src = ball ?? s.balls[0]!;
-      if (!src.alive && !staging && s.phase !== "roll") {
+      if (!src.alive && !staging && s.phase !== "roll" && src.stage !== "sink" && src.stage !== "trough") {
         mesh.visible = false;
         continue;
       }

@@ -32,8 +32,10 @@ import {
   themeCabinet,
   themeFelt,
   usesBackboard,
+  usesFlight,
   xWorld,
 } from "@/game/layout3d";
+import { CLASSIC, rampSegments } from "@/game/machine";
 import type { LaneDef } from "@/game/types";
 import { easeOutBack } from "@/game/anim";
 
@@ -294,14 +296,17 @@ export function LaneMachine({
     [faceMap],
   );
   const board = usesBackboard(lane.theme);
+  const flight = usesFlight(lane.theme);
   const half = HALF_W;
   const zLip = rampStartZ();
   const zEnd = rampEndZ();
   const slope = Math.hypot(RAMP_RUN, RAMP_RISE);
   const tilt = Math.atan(RAMP_RISE / RAMP_RUN);
-  const origin = boardOrigin();
-  const cabLen = FLAT + RAMP_RUN + CAB_FRONT + 0.7;
+  const origin = boardOrigin(lane.theme);
+  const gap = flight ? CLASSIC.flightGap : 0.02;
+  const cabLen = FLAT + RAMP_RUN + gap + CAB_FRONT + 0.7;
   const cabZ = THROW_Z + CAB_FRONT / 2 - cabLen / 2;
+  const curve = useMemo(() => rampSegments(7), []);
   const marquee = useMemo(
     () => retroSign("#efe6d4", { map: paintSign(lane.name.toUpperCase(), 512, 96), emissive: "#c47a3a", emissiveIntensity: 0.7 }),
     [lane.name],
@@ -343,7 +348,7 @@ export function LaneMachine({
         <CuboidCollider args={[half + 0.06, 0.08, FLAT / 2]} position={[0, PLAY_Y - 0.06, THROW_Z - FLAT / 2]} />
         <CuboidCollider args={[0.04, 0.08, FLAT / 2]} position={[-half - 0.04, PLAY_Y + 0.04, THROW_Z - FLAT / 2]} />
         <CuboidCollider args={[0.04, 0.08, FLAT / 2]} position={[half + 0.04, PLAY_Y + 0.04, THROW_Z - FLAT / 2]} />
-        <CuboidCollider args={[CAB_W / 2, 0.7, 0.12]} position={[0, 1.1, zEnd - 0.22]} />
+        <CuboidCollider args={[CAB_W / 2, 0.7, 0.12]} position={[0, 1.1, origin.z + 0.06]} />
       </RigidBody>
 
       <mesh position={[0, 0.4, cabZ]} material={body}>
@@ -375,21 +380,64 @@ export function LaneMachine({
         <boxGeometry args={[0.05, 0.055, FLAT]} />
       </mesh>
 
-      <mesh position={[0, PLAY_Y + RAMP_RISE / 2, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={laneSurf}>
-        <boxGeometry args={[half * 2 + 0.02, 0.055, slope]} />
-      </mesh>
-      <mesh position={[-half - 0.025, PLAY_Y + RAMP_RISE / 2 + 0.03, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={railL}>
-        <boxGeometry args={[0.05, 0.055, slope]} />
-      </mesh>
-      <mesh position={[half + 0.025, PLAY_Y + RAMP_RISE / 2 + 0.03, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={railR}>
-        <boxGeometry args={[0.05, 0.055, slope]} />
-      </mesh>
+      {flight ? (
+        <>
+          {curve.map((s, i) => (
+            <group key={`ramp${i}`} position={[0, s.midY, s.midZ]} rotation={[s.tilt, 0, 0]}>
+              <mesh material={laneSurf}>
+                <boxGeometry args={[half * 2 + 0.02, 0.055, s.len]} />
+              </mesh>
+              <mesh position={[-half - 0.025, 0.03, 0]} material={railL}>
+                <boxGeometry args={[0.05, 0.055, s.len]} />
+              </mesh>
+              <mesh position={[half + 0.025, 0.03, 0]} material={railR}>
+                <boxGeometry args={[0.05, 0.055, s.len]} />
+              </mesh>
+            </group>
+          ))}
+        </>
+      ) : (
+        <>
+          <mesh position={[0, PLAY_Y + RAMP_RISE / 2, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={laneSurf}>
+            <boxGeometry args={[half * 2 + 0.02, 0.055, slope]} />
+          </mesh>
+          <mesh position={[-half - 0.025, PLAY_Y + RAMP_RISE / 2 + 0.03, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={railL}>
+            <boxGeometry args={[0.05, 0.055, slope]} />
+          </mesh>
+          <mesh position={[half + 0.025, PLAY_Y + RAMP_RISE / 2 + 0.03, zLip - RAMP_RUN / 2]} rotation={[tilt, 0, 0]} material={railR}>
+            <boxGeometry args={[0.05, 0.055, slope]} />
+          </mesh>
+        </>
+      )}
       <mesh position={[0, PLAY_Y + RAMP_RISE + 0.01, zEnd + 0.02]} material={gold}>
         <boxGeometry args={[half * 2 + 0.08, 0.03, 0.04]} />
       </mesh>
 
-      <mesh position={[half + 0.16, PLAY_Y - 0.08, THROW_Z - FLAT * 0.32]} material={dark}>
-        <boxGeometry args={[0.16, 0.1, FLAT * 0.62]} />
+      {flight && (
+        <>
+          <mesh position={[-half - 0.03, PLAY_Y + RAMP_RISE + 0.07, (zEnd + origin.z) / 2]} material={body}>
+            <boxGeometry args={[0.05, 0.16, Math.max(0.12, zEnd - origin.z)]} />
+          </mesh>
+          <mesh position={[half + 0.03, PLAY_Y + RAMP_RISE + 0.07, (zEnd + origin.z) / 2]} material={body}>
+            <boxGeometry args={[0.05, 0.16, Math.max(0.12, zEnd - origin.z)]} />
+          </mesh>
+          <mesh position={[0, PLAY_Y + 0.28, (zEnd + origin.z) / 2]} material={dark}>
+            <boxGeometry args={[half * 2 + 0.04, 0.08, Math.max(0.12, zEnd - origin.z - 0.04)]} />
+          </mesh>
+          <mesh position={[-HEAD_W / 2 + 0.08, 0.7, origin.z + 0.08]} material={body}>
+            <boxGeometry args={[0.08, 1.4, 0.08]} />
+          </mesh>
+          <mesh position={[HEAD_W / 2 - 0.08, 0.7, origin.z + 0.08]} material={body}>
+            <boxGeometry args={[0.08, 1.4, 0.08]} />
+          </mesh>
+        </>
+      )}
+
+      <mesh position={[half + 0.16, PLAY_Y - 0.1, THROW_Z - (FLAT + RAMP_RUN + gap) * 0.45]} material={dark}>
+        <boxGeometry args={[0.18, 0.12, (FLAT + RAMP_RUN + gap) * 0.82]} />
+      </mesh>
+      <mesh position={[half + 0.16, PLAY_Y - 0.04, THROW_Z - (FLAT + RAMP_RUN + gap) * 0.45]} material={dark}>
+        <boxGeometry args={[0.12, 0.04, (FLAT + RAMP_RUN + gap) * 0.78]} />
       </mesh>
       <ReturnRack game={game} />
 
@@ -451,8 +499,8 @@ export function LaneMachine({
       {[
         [-CAB_W / 2 + 0.12, THROW_Z + 0.08],
         [CAB_W / 2 - 0.12, THROW_Z + 0.08],
-        [-CAB_W / 2 + 0.12, zEnd + 0.25],
-        [CAB_W / 2 - 0.12, zEnd + 0.25],
+        [-CAB_W / 2 + 0.12, origin.z + 0.12],
+        [CAB_W / 2 - 0.12, origin.z + 0.12],
       ].map(([x, z], i) => (
         <mesh key={i} position={[x, 0.18, z]} material={body}>
           <boxGeometry args={[0.1, 0.36, 0.1]} />

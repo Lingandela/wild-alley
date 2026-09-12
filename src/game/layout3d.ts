@@ -1,25 +1,32 @@
-import type { Hole, LaneDef } from "./types";
+import type { Hole, LaneDef, LaneTheme } from "./types";
 import { heightAt } from "./physics";
+import {
+  CLASSIC,
+  boardLocalToWorld as machineBoardLocal,
+  boardOrigin as machineOrigin,
+  simToWorld,
+  usesFlight,
+} from "./machine";
 
 /** Classic skee-ball table in meters. Thrower stands at +Z looking −Z. */
-export const PLAY_Y = 0.86;
-export const HALF_W = 0.34;
+export const PLAY_Y = CLASSIC.playY;
+export const HALF_W = CLASSIC.alleyHalf;
 /** Playable half-width on the scoring head (meters). 100s at ±0.46 sit inside this. */
-export const FACE_HALF = 0.52;
-export const BALL_R3 = 0.048;
-export const THROW_Z = 1.18;
+export const FACE_HALF = CLASSIC.faceHalf;
+export const BALL_R3 = CLASSIC.visR;
+export const THROW_Z = CLASSIC.throwZ;
 export const CAB_W = 1.08;
 export const CAB_FRONT = 0.38;
-export const FLAT = 2.2;
-export const RAMP_RUN = 0.62;
-export const RAMP_RISE = 0.44;
+export const FLAT = CLASSIC.flat;
+export const RAMP_RUN = CLASSIC.rampRun;
+export const RAMP_RISE = CLASSIC.rampRise;
 /** Lean back from vertical so the face reads to the thrower. */
-export const BOARD_LEAN = 0.18;
+export const BOARD_LEAN = CLASSIC.boardLean;
 /** Circular target on the wooden head. Center = 50-point cup. */
-export const FACE_R = 0.56;
-export const FACE_CY = 0.54;
-export const HEAD_W = 1.22;
-export const HEAD_H = 1.36;
+export const FACE_R = CLASSIC.faceR;
+export const FACE_CY = CLASSIC.faceCy;
+export const HEAD_W = CLASSIC.headW;
+export const HEAD_H = CLASSIC.headH;
 /** Fraction of post-lip distance that is the ramp (rest is the scoring face). */
 export const RAMP_T = 0.14;
 export const SPAWN = { x: 0.0, y: 0.8, z: 4.2 };
@@ -78,29 +85,19 @@ export function usesBackboard(theme: LaneDef["theme"]) {
   return theme === "classic" || theme === "pinball" || theme === "chaos";
 }
 
+export { usesFlight };
+
 export function hillLift(lane: LaneDef, x: number, y: number) {
   return heightAt(x, y, lane.hills) * 0.55;
 }
 
-export function boardOrigin() {
-  return {
-    x: 0,
-    y: PLAY_Y + RAMP_RISE + 0.02,
-    z: rampEndZ() - 0.02,
-  };
+export function boardOrigin(theme: LaneTheme = "classic") {
+  return machineOrigin(theme);
 }
 
 /** Board local: +X right, +Y up the face, +Z toward the thrower. */
-export function boardLocalToWorld(lx: number, ly: number, lz: number) {
-  const o = boardOrigin();
-  const th = -BOARD_LEAN;
-  const c = Math.cos(th);
-  const s = Math.sin(th);
-  return {
-    x: o.x + lx,
-    y: o.y + ly * c - lz * s,
-    z: o.z + ly * s + lz * c,
-  };
+export function boardLocalToWorld(lx: number, ly: number, lz: number, theme: LaneTheme = "classic") {
+  return machineBoardLocal(lx, ly, lz, theme);
 }
 
 function postLipT(lane: LaneDef, y: number) {
@@ -143,6 +140,7 @@ export function skeeHolesFor(lane: LaneDef): Hole[] {
 }
 
 export function ballWorld(lane: LaneDef, b: { x: number; y: number; z: number }) {
+  if (usesFlight(lane.theme)) return simToWorld(b);
   const x = xWorld(lane, b.x);
   const air = Math.max(0, b.z);
   if (!usesBackboard(lane.theme) || b.y <= lane.lipY) {
@@ -163,10 +161,10 @@ export function ballWorld(lane: LaneDef, b: { x: number; y: number; z: number })
   }
   const ly = faceLocalY(lane, b.y);
   if (air > 0.03) {
-    const face = boardLocalToWorld(x, ly, BALL_R3);
+    const face = boardLocalToWorld(x, ly, BALL_R3, lane.theme);
     return { x: face.x, y: face.y + air * 0.55, z: face.z };
   }
-  return boardLocalToWorld(x, ly, BALL_R3 + 0.03);
+  return boardLocalToWorld(x, ly, BALL_R3 + 0.03, lane.theme);
 }
 
 export function holeWorld(lane: LaneDef, hole: Hole) {
@@ -174,7 +172,7 @@ export function holeWorld(lane: LaneDef, hole: Hole) {
     const lx = hole.faceX ?? xWorld(lane, hole.x);
     const ly = hole.faceY ?? faceLocalY(lane, hole.y);
     const vis = hole.faceR ?? Math.max(0.09, Math.min(0.175, 0.165 - hole.value * 0.0006));
-    return { ...boardLocalToWorld(lx, ly, 0.04), r: vis, onBoard: true, lx, ly };
+    return { ...boardLocalToWorld(lx, ly, 0.04, lane.theme), r: vis, onBoard: true, lx, ly };
   }
   const p = ballWorld(lane, { x: hole.x, y: hole.y, z: 0 });
   return {
@@ -211,9 +209,8 @@ export function seatLap() {
   return { x: 0, y: 1.13, z: THROW_Z + 0.24, rx: -1.08 };
 }
 
-
-export function seatLook() {
-  const o = boardOrigin();
+export function seatLook(theme: LaneTheme = "classic") {
+  const o = boardOrigin(theme);
   return { x: 0, y: o.y + FACE_CY, z: o.z + 0.14 };
 }
 

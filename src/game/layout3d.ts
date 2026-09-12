@@ -206,7 +206,7 @@ export function seatEye() {
 }
 
 export function seatLap() {
-  return { x: 0, y: 1.13, z: THROW_Z + 0.24, rx: -1.08 };
+  return { x: 0, y: 1.18, z: THROW_Z + 0.28, rx: -1.02 };
 }
 
 export function seatLook(theme: LaneTheme = "classic") {

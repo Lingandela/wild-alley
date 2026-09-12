@@ -156,7 +156,10 @@ function SkeeCup({ lane, index }: { lane: LaneDef; index: number }) {
         <cylinderGeometry args={[w.r * 0.96, w.r * 0.8, 0.12, 18, 1, true]} />
       </mesh>
       <mesh material={rim}>
-        <ringGeometry args={[w.r * 0.72, w.r * 1.18, 22]} />
+        <ringGeometry args={[w.r * 0.7, w.r * 1.28, 24]} />
+      </mesh>
+      <mesh position={[0, 0, 0.006]} material={rim}>
+        <torusGeometry args={[w.r * 0.98, 0.01, 8, 22]} />
       </mesh>
       <mesh position={[side, 0, 0.012]} material={plate}>
         <planeGeometry args={[0.16, 0.11]} />
@@ -455,8 +458,8 @@ export function LaneMachine({
             <meshLambertMaterial color="#6a241c" flatShading />
           </mesh>
           {SKEE_RINGS.map((r) => (
-            <mesh key={r} position={[0, FACE_CY, 0.028]} material={ringMat}>
-              <torusGeometry args={[r, 0.016, 8, 32]} />
+            <mesh key={r} position={[0, FACE_CY, 0.03]} material={ringMat}>
+              <torusGeometry args={[r, 0.02, 8, 32]} />
             </mesh>
           ))}
           {lane.holes.map((_, i) => (

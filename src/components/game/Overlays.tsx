@@ -146,14 +146,14 @@ function AimHint({ snap }: { snap: Snapshot }) {
   if (snap.phase === "aim") {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Hold W / Space or drag back · release to roll · A/D english
+        Hold W / Space or pull back · drag left / right to aim · release to roll
       </p>
     );
   }
   if (snap.phase === "pick" || snap.phase === "intro") {
     return (
       <p className="absolute inset-x-0 bottom-6 z-10 text-center text-sm text-muted [text-shadow:0_2px_0_#100c12]">
-        Wallet to pick stubs · look down at your lap · W throws · Q walks away
+        Wallet to pick stubs · look down at your lap · drag the ball left / right · W throws · Q walks away
       </p>
     );
   }

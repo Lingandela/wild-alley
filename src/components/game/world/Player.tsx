@@ -6,7 +6,7 @@ import type { KinematicCharacterController } from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import { AnimBus } from "@/game/anim";
-import { COL, PARLOR, SEAT, SPAWN, seatEye } from "@/game/layout3d";
+import { COL, HALF_W, PARLOR, SEAT, SPAWN, seatEye } from "@/game/layout3d";
 
 const EYE = 0.7;
 const WALK = 3.15;
@@ -89,8 +89,28 @@ export function Player({ game }: { game: WildAlleyGame }) {
     const selecting = s.walletOpen && s.walletPinned;
     if (!s.paused && !selecting) {
       const m = game.input.consumeLook();
-      s.lookYaw -= m.x * SENS;
-      s.lookPitch -= m.y * SENS;
+      const aiming = seated && (s.phase === "aim" || s.phase === "pick" || s.phase === "intro");
+      if (aiming) {
+        const rail = Math.min(HALF_W, s.world?.alleyRail ?? s.lane.rail) - 0.05;
+        const mouseAims = game.input.locked || !game.input.pointerDown;
+        if (mouseAims) {
+          s.aimX += m.x * 0.0018;
+          s.aimX = Math.max(-rail, Math.min(rail, s.aimX));
+        }
+        if (game.input.locked && game.input.pointerDown) {
+          s.power = Math.max(0, Math.min(1, s.power + m.y * 0.0038));
+          s.charging = true;
+        } else if (!game.input.pointerDown) {
+          s.lookPitch -= m.y * SENS;
+        }
+        if (s.balls[0] && (s.phase === "aim" || s.phase === "pick" || s.phase === "intro")) {
+          s.balls[0].x = s.aimX;
+          s.balls[0].y = 0.12;
+        }
+      } else {
+        s.lookYaw -= m.x * SENS;
+        s.lookPitch -= m.y * SENS;
+      }
       if (seated) {
         if (game.input.down()) s.lookPitch = Math.min(0.92, s.lookPitch + 1.7 * dt);
         if (s.lookYaw > 0.62) s.lookYaw = 0.62;
@@ -186,9 +206,9 @@ export function Player({ game }: { game: WildAlleyGame }) {
       camera.position.y += juice.y * 0.008;
     }
     if (camera instanceof THREE.PerspectiveCamera) {
-      camera.near = 0.08;
+      camera.near = s.walletOpen ? 0.01 : 0.08;
       camera.far = 52;
-      const want = s.walletOpen ? 52 : seated ? 52 : 64;
+      const want = s.walletOpen ? 66 : seated ? 52 : 64;
       camera.fov += (want - camera.fov) * (1 - Math.exp(-5 * dt));
       camera.updateProjectionMatrix();
     }

@@ -60,6 +60,13 @@ export class WildAlleyGame {
       ballsLeft: this.session.ballsLeft,
       hand: this.session.hand.map((c) => c.name),
       selected: this.session.selected.length,
+      aimX: Number(this.session.aimX.toFixed(3)),
+      power: Number(this.session.power.toFixed(3)),
+      charging: this.session.charging,
+      ballX: Number((this.session.balls[0]?.x ?? 0).toFixed(3)),
+      ballStage: this.session.balls[0]?.stage ?? null,
+      score: this.session.scores[0],
+      lastThrow: this.session.lastThrowScore,
     });
   }
 
@@ -178,6 +185,13 @@ declare global {
       ballsLeft: number;
       hand: string[];
       selected: number;
+      aimX: number;
+      power: number;
+      charging: boolean;
+      ballX: number;
+      ballStage: string | null;
+      score: number;
+      lastThrow: number;
     };
   }
 }

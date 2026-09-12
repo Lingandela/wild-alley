@@ -24,18 +24,21 @@ export const CLASSIC = {
   faceCy: 0.54,
   headW: 1.22,
   headH: 1.36,
-  g: 7.6,
-  launchMin: 2.55,
-  launchGain: 5.05,
-  englishScale: 0.95,
+  g: 7.4,
+  launchMin: 2.42,
+  launchGain: 2.78,
+  englishScale: 1.25,
   airEnglish: 1.65,
-  woodRest: 0.1,
-  rimRest: 0.42,
-  faceFriction: 1.05,
+  woodRest: 0.12,
+  rimRest: 0.62,
+  faceFriction: 0.82,
   sinkTime: 0.38,
   troughTime: 0.9,
-  rimWidth: 0.024,
-  captureScale: 1.02,
+  rimWidth: 0.028,
+  captureScale: 1.0,
+  maxHop: 1.55,
+  ringHalfW: 0.011,
+  rings: [0.4, 0.28, 0.16],
 } as const;
 
 export type Machine = typeof CLASSIC;
@@ -238,6 +241,44 @@ export function overCup(lx: number, ly: number, h: Hole) {
   return Math.hypot(lx - hx, ly - hy) < cupOpening(h);
 }
 
+/** Concentric painted ridges: glance and you zigzag; a clean inward line can cross. */
+function ringRide(
+  lx: number,
+  ly: number,
+  vLx: number,
+  vLy: number,
+  holes: Hole[],
+): { lx: number; ly: number; vLx: number; vLy: number; hit: boolean } {
+  const m = CLASSIC;
+  const dx = lx;
+  const dy = ly - m.faceCy;
+  const dist = Math.hypot(dx, dy) || 1e-6;
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const { hole, d } = nearestCup(lx, ly, holes);
+  if (hole && d < cupOpening(hole) + m.rimWidth * 0.55) {
+    return { lx, ly, vLx, vLy, hit: false };
+  }
+  for (const R of m.rings) {
+    const gap = dist - R;
+    if (Math.abs(gap) > m.ringHalfW) continue;
+    const vn = vLx * nx + vLy * ny;
+    const vt = -ny * vLx + nx * vLy;
+    const approaching = (gap > 0 && vn < -0.05) || (gap < 0 && vn > 0.05);
+    if (!approaching) continue;
+    const inward = vn < 0;
+    if (inward && Math.abs(vn) >= Math.abs(vt) * 0.5) {
+      vLx -= vn * nx * 0.14;
+      vLy -= vn * ny * 0.14;
+      return { lx, ly, vLx, vLy, hit: true };
+    }
+    vLx -= 1.28 * vn * nx;
+    vLy -= 1.28 * vn * ny;
+    return { lx, ly, vLx, vLy, hit: true };
+  }
+  return { lx, ly, vLx, vLy, hit: false };
+}
+
 function startTrough(b: Ball) {
   b.stage = "trough";
   b.troughT = 0;
@@ -318,6 +359,7 @@ function stepRoll(b: Ball, flags: ThrowFlags, extras: { windX: number }, dt: num
     b.y = yLip;
     b.z = m.rampRise;
     b.vz = slope * b.vy;
+    if (Math.abs(b.x) > 0.14) b.vx += Math.sign(b.x) * 0.42;
     b.stage = "air";
   } else if (b.y >= yLip - 0.004 && b.vy <= 0.35) {
     b.y = yLip - 0.006;
@@ -341,7 +383,9 @@ function tryFaceHit(b: Ball, holes: Hole[], flags: ThrowFlags): HitEvent[] {
   if (loc.lz > m.visR + 0.09) return [];
 
   const { hole, d } = nearestCup(loc.lx, loc.ly, holes);
-  if (hole && overCup(loc.lx, loc.ly, hole) && loc.lz < m.visR + 0.055 && (approaching || loc.lz <= m.visR + 0.02)) {
+  const opening = hole ? cupOpening(hole) : 0;
+  const cleanDrop = Boolean(hole && d < opening * 0.7 && loc.lz < m.visR + 0.05 && (approaching || loc.lz <= m.visR + 0.02));
+  if (hole && cleanDrop) {
     if (flags.superball && b.superSkip) {
       b.superSkip = false;
       const hx = hole.faceX ?? hole.x;
@@ -404,6 +448,11 @@ function stepAir(b: Ball, holes: Hole[], flags: ThrowFlags, extras: { windX: num
   b.z += b.vz * dt;
   b.spin += b.vx * 14 * dt;
 
+  if (b.z > m.maxHop) {
+    b.z = m.maxHop;
+    if (b.vz > 0) b.vz *= -0.08;
+  }
+
   const yLip = lipY(m);
   if (b.y < yLip) {
     const h = rampHeight(m, b.y);
@@ -428,15 +477,6 @@ function stepFace(b: Ball, holes: Hole[], flags: ThrowFlags, extras: { windX: nu
   const hits: HitEvent[] = [];
   const w = simToWorld(b);
   const loc = worldToBoard(w.x, w.y, w.z);
-  const { hole, d } = nearestCup(loc.lx, loc.ly, holes);
-  if (hole && overCup(loc.lx, loc.ly, hole)) {
-    if (flags.superball && b.superSkip) b.superSkip = false;
-    else {
-      startSink(b, hole);
-      return hits;
-    }
-  }
-
   const lean = m.boardLean;
   const gLy = -m.g * Math.cos(lean);
   const wv = worldVel(b);
@@ -446,24 +486,57 @@ function stepFace(b: Ball, holes: Hole[], flags: ThrowFlags, extras: { windX: nu
   let vLy = wv.x * lyAxis.x + wv.y * lyAxis.y + wv.z * lyAxis.z;
   vLx += extras.windX * dt;
   vLy += gLy * dt;
-  const damp = Math.exp(-m.faceFriction * flags.friction * 2.4 * dt);
+  const damp = Math.exp(-m.faceFriction * flags.friction * 1.8 * dt);
   vLx *= damp;
   vLy *= damp;
 
   let lx = loc.lx + vLx * dt;
   let ly = loc.ly + vLy * dt;
+
+  const rode = ringRide(lx, ly, vLx, vLy, holes);
+  lx = rode.lx;
+  ly = rode.ly;
+  vLx = rode.vLx;
+  vLy = rode.vLy;
+  if (rode.hit) hits.push({ kind: "peg", x: b.x, y: b.y, mag: Math.hypot(vLx, vLy) });
+
+  const { hole } = nearestCup(lx, ly, holes);
+  const speed = Math.hypot(vLx, vLy);
+  if (hole) {
+    const hx = hole.faceX ?? hole.x;
+    const hy = hole.faceY ?? hole.y;
+    const opening = cupOpening(hole);
+    const dx = lx - hx;
+    const dy = ly - hy;
+    const dist = Math.hypot(dx, dy) || 1e-6;
+    const nx = dx / dist;
+    const ny = dy / dist;
+    const vn = vLx * nx + vLy * ny;
+    const vt = -ny * vLx + nx * vLy;
+    const intoHole = vn < 0 && Math.abs(vn) >= Math.abs(vt) * 0.4;
+    if (dist < opening * 0.9 || (dist < opening + m.rimWidth && (speed < 1.2 || intoHole))) {
+      if (flags.superball && b.superSkip) b.superSkip = false;
+      else {
+        startSink(b, hole);
+        return hits;
+      }
+    } else if (dist < opening + m.rimWidth && vn < 0) {
+      const e = rimE(flags);
+      vLx -= (1 + e) * vn * nx;
+      vLy -= (1 + e) * vn * ny;
+      vLx += -ny * 0.28;
+      hits.push({ kind: "peg", x: b.x, y: b.y, mag: Math.max(0.2, -vn) });
+    }
+  }
+
   const side = m.faceHalf - 0.02;
   if (lx < -side) {
     lx = -side;
-    vLx = Math.abs(vLx) * 0.35;
+    vLx = Math.abs(vLx) * 0.38;
   }
   if (lx > side) {
     lx = side;
-    vLx = -Math.abs(vLx) * 0.35;
-  }
-
-  if (hole && d < (hole.faceR ?? hole.r) + m.rimWidth && !overCup(lx, ly, hole) && Math.hypot(vLx, vLy) > 0.35) {
-    hits.push({ kind: "peg", x: b.x, y: b.y, mag: Math.hypot(vLx, vLy) });
+    vLx = -Math.abs(vLx) * 0.38;
   }
 
   const snapped = boardLocalToWorld(lx, ly, m.visR);
@@ -477,7 +550,7 @@ function stepFace(b: Ball, holes: Hole[], flags: ThrowFlags, extras: { windX: nu
   b.faceY = ly;
   b.spin += vLx * 16 * dt;
 
-  if (ly < 0.02 || (ly < 0.06 && Math.hypot(vLx, vLy) < 0.12)) startTrough(b);
+  if (ly < 0.02 || (ly < 0.055 && Math.hypot(vLx, vLy) < 0.1)) startTrough(b);
   if (ly > m.headH + 0.02) b.stage = "air";
   return hits;
 }
@@ -627,7 +700,7 @@ export function simulateThrow(opts: {
     const hits = stepMachine(b, opts.holes, flags, { windX: opts.windX ?? 0 }, dt);
     if (hits.some((h) => h.kind === "wall" || h.kind === "peg")) contacted = true;
     if (b.z > maxHeight) maxHeight = b.z;
-    if (opts.record && path.length < 80) path.push({ x: b.x, y: b.y, z: b.z, stage: b.stage ?? "roll" });
+    if (opts.record && path.length < 180) path.push({ x: b.x, y: b.y, z: b.z, stage: b.stage ?? "roll" });
     if (b.stage === "sink" && hole == null) {
       hole =
         opts.holes.find(

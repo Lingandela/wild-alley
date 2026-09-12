@@ -3,9 +3,9 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { WildAlleyGame } from "@/game/game";
 import type { UiCard } from "@/game/types";
-import { AnimBus, easeOutBack, spring, stepSpring, tween, stepTween } from "@/game/anim";
+import { easeOutBack, spring, stepSpring, tween, stepTween } from "@/game/anim";
 import { paintBill, paintIdCard, paintStub, retro, retroMapped } from "@/game/retroMat";
-import { seatLap } from "@/game/layout3d";
+import { isLookingAtLap } from "@/game/foundations";
 
 const LEAF_W = 0.122;
 const LEAF_H = 0.102;
@@ -13,10 +13,28 @@ const LEAF_T = 0.008;
 const CARD_W = 0.078;
 const CARD_H = 0.018;
 const SLOTS = 5;
+/** Local width of both leaves + hands, used to fit the open bifold on screen. */
+const SPAN_W = 0.3;
+const SPAN_H = 0.13;
 
 const _off = new THREE.Vector3();
 const _tilt = new THREE.Quaternion();
 const _euler = new THREE.Euler();
+
+function asViewmodel(root: THREE.Object3D) {
+  root.traverse((o) => {
+    o.frustumCulled = false;
+    o.renderOrder = 1200;
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.Material[];
+    for (const m of mats) {
+      if (!m) continue;
+      m.depthTest = false;
+      m.depthWrite = false;
+    }
+  });
+}
 
 function SlotCard({
   card,
@@ -48,6 +66,8 @@ function SlotCard({
       new THREE.MeshBasicMaterial({
         map,
         color: "#ffffff",
+        depthTest: false,
+        depthWrite: false,
       }),
     [map],
   );
@@ -107,23 +127,23 @@ function SlotCard({
 
 function Hand({ side, skin, knuckle, nail }: { side: 1 | -1; skin: THREE.Material; knuckle: THREE.Material; nail: THREE.Material }) {
   return (
-    <group position={[side * 0.148, -0.028, 0.012]} rotation={[0.22, side * -0.22, side * 0.18]}>
+    <group position={[side * 0.116, -0.016, 0.01]} rotation={[0.18, side * -0.18, side * 0.14]}>
       <mesh position={[0, -0.008, -0.006]} material={skin} raycast={() => null}>
-        <boxGeometry args={[0.052, 0.078, 0.022]} />
+        <boxGeometry args={[0.042, 0.07, 0.02]} />
       </mesh>
-      <mesh position={[side * -0.012, 0.018, 0.02]} rotation={[0.55, 0, side * 0.55]} material={skin} raycast={() => null}>
-        <boxGeometry args={[0.016, 0.042, 0.015]} />
+      <mesh position={[side * -0.01, 0.016, 0.018]} rotation={[0.5, 0, side * 0.5]} material={skin} raycast={() => null}>
+        <boxGeometry args={[0.014, 0.036, 0.013]} />
       </mesh>
-      <mesh position={[side * -0.02, 0.036, 0.034]} rotation={[0.2, 0, side * 0.2]} material={nail} raycast={() => null}>
-        <boxGeometry args={[0.01, 0.01, 0.004]} />
+      <mesh position={[side * -0.016, 0.032, 0.03]} rotation={[0.2, 0, side * 0.18]} material={nail} raycast={() => null}>
+        <boxGeometry args={[0.009, 0.009, 0.003]} />
       </mesh>
-      {[-0.028, -0.01, 0.008, 0.024].map((_, i) => (
-        <group key={i} position={[side * 0.016, 0.036, -0.002]} rotation={[1.12 + i * 0.05, 0, side * 0.08]}>
-          <mesh position={[0, 0.018, 0]} material={i % 2 ? knuckle : skin} raycast={() => null}>
-            <boxGeometry args={[0.014, 0.036, 0.013]} />
+      {[-0.024, -0.008, 0.008, 0.02].map((_, i) => (
+        <group key={i} position={[side * 0.014, 0.032, -0.002]} rotation={[1.12 + i * 0.05, 0, side * 0.08]}>
+          <mesh position={[0, 0.016, 0]} material={i % 2 ? knuckle : skin} raycast={() => null}>
+            <boxGeometry args={[0.012, 0.032, 0.011]} />
           </mesh>
-          <mesh position={[0, 0.036, 0.004]} material={nail} raycast={() => null}>
-            <boxGeometry args={[0.01, 0.008, 0.004]} />
+          <mesh position={[0, 0.032, 0.003]} material={nail} raycast={() => null}>
+            <boxGeometry args={[0.009, 0.007, 0.003]} />
           </mesh>
         </group>
       ))}
@@ -132,8 +152,8 @@ function Hand({ side, skin, knuckle, nail }: { side: 1 | -1; skin: THREE.Materia
 }
 
 /**
- * Lap bifold. Follows the camera in world space (no portal, no depth-test-off
- * overlay) so it sits in the lower third and never covers the scoring face.
+ * Open wallet is a camera viewmodel: drawn on top of the world, scaled to the
+ * frustum so looking down always shows the whole bifold in front of you.
  */
 export function Wallet({
   game,
@@ -148,8 +168,8 @@ export function Wallet({
   const inner = useRef<THREE.Group>(null);
   const left = useRef<THREE.Group>(null);
   const right = useRef<THREE.Group>(null);
-  const bus = useRef(new AnimBus());
-  const { camera } = useThree();
+  const openK = useRef(0);
+  const { camera, size } = useThree();
   const [hover, setHover] = useState<string | null>(null);
   const leather = useMemo(() => retroMapped(leatherMap, "#d4b08a", { snap: false }), [leatherMap]);
   const suede = useMemo(() => retroMapped(suedeMap, "#a05048", { snap: false }), [suedeMap]);
@@ -169,6 +189,8 @@ export function Wallet({
       new THREE.MeshBasicMaterial({
         map: idMap,
         color: "#ffffff",
+        depthTest: false,
+        depthWrite: false,
       }),
     [idMap],
   );
@@ -179,6 +201,8 @@ export function Wallet({
         mat: new THREE.MeshBasicMaterial({
           map: paintBill(n),
           color: "#ffffff",
+          depthTest: false,
+          depthWrite: false,
         }),
         rot: -0.18 + i * 0.16,
         y: -0.028 + i * 0.004,
@@ -189,40 +213,58 @@ export function Wallet({
 
   useFrame((_, raw) => {
     const dt = Math.min(raw, 0.1);
-    const open = bus.current.to("open", s.walletOpen ? 1 : 0, 14, 0.78);
-    bus.current.tick("open", dt);
-    const k = open.value;
+    const want = s.walletOpen ? 1 : 0;
+    openK.current += (want - openK.current) * (1 - Math.exp(-12 * dt));
+    if (openK.current < 0.001) openK.current = 0;
+    if (openK.current > 0.999) openK.current = 1;
+    const k = openK.current;
     const g = root.current;
     const hold = inner.current;
     if (!g || !hold) return;
-    if (k <= 0.05) {
+    if (k <= 0.04) {
       g.visible = false;
       return;
     }
     g.visible = true;
-    if (s.seated && s.screen === "play") {
-      const lap = seatLap();
-      g.position.set(lap.x, lap.y - (1 - k) * 0.1, lap.z);
-      _euler.set(lap.rx + (1 - k) * 0.25, 0, 0);
-      g.quaternion.setFromEuler(_euler);
-      g.scale.setScalar(0.92 + k * 0.1);
-    } else {
-      g.position.copy(camera.position);
-      g.quaternion.copy(camera.quaternion);
-      _off.set(0, -0.18 - (1 - k) * 0.08, -0.34);
-      _off.applyQuaternion(camera.quaternion);
-      g.position.add(_off);
-      _euler.set(-0.42 + (1 - k) * 0.28, 0, 0);
-      _tilt.setFromEuler(_euler);
-      g.quaternion.multiply(_tilt);
-      g.scale.setScalar(0.88 + k * 0.08);
-    }
+    asViewmodel(g);
+    g.position.copy(camera.position);
+    g.quaternion.copy(camera.quaternion);
+    const fov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 64;
+    const aspect = size.width / Math.max(1, size.height);
+    const half = ((fov * Math.PI) / 180) / 2;
+    const dist = 0.36;
+    const visH = 2 * Math.tan(half) * dist;
+    const visW = visH * Math.max(0.42, aspect);
+    const looking = s.seated && (isLookingAtLap(s.lookPitch) || s.lookPitch > 0.28 || s.walletPinned);
+    const fillW = looking ? 0.64 : 0.52;
+    const fillH = looking ? 0.32 : 0.24;
+    const sc = Math.max(0.8, Math.min(2.1, Math.min((visW * fillW) / SPAN_W, (visH * fillH) / SPAN_H)));
+    _off.set(0, looking ? 0.08 : -0.055, -dist);
+    _off.applyQuaternion(camera.quaternion);
+    g.position.add(_off);
+    _euler.set(looking ? -0.02 : -0.32, 0, 0);
+    _tilt.setFromEuler(_euler);
+    g.quaternion.multiply(_tilt);
+    g.scale.setScalar(sc);
     if (left.current) left.current.rotation.y = -1.18 * (1 - k);
     if (right.current) right.current.rotation.y = 1.18 * (1 - k);
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      (window as unknown as { __walletFit?: Record<string, number | boolean> }).__walletFit = {
+        dist,
+        sc: Number(sc.toFixed(3)),
+        looking,
+        fov: Number(fov.toFixed(2)),
+        aspect: Number(aspect.toFixed(3)),
+        visW: Number(visW.toFixed(3)),
+        visH: Number(visH.toFixed(3)),
+        pitch: Number(s.lookPitch.toFixed(3)),
+        k: Number(k.toFixed(3)),
+      };
+    }
   });
 
   return (
-    <group ref={root} visible={false} frustumCulled={false}>
+    <group ref={root} visible={false} frustumCulled={false} renderOrder={1200}>
       <group ref={inner}>
         <Hand side={-1} skin={skin} knuckle={knuckle} nail={nail} />
         <Hand side={1} skin={skin} knuckle={knuckle} nail={nail} />

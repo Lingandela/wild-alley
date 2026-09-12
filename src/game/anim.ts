@@ -25,6 +25,10 @@ export function stepSpring(s: Spring, dt: number) {
   const acc = -w * w * (s.value - s.target) - 2 * s.zeta * w * s.vel;
   s.vel += acc * dt;
   s.value += s.vel * dt;
+  if (!Number.isFinite(s.value) || Math.abs(s.value) > 8) {
+    s.value = s.target;
+    s.vel = 0;
+  }
   if (Math.abs(s.value - s.target) < 0.0004 && Math.abs(s.vel) < 0.002) {
     s.value = s.target;
     s.vel = 0;

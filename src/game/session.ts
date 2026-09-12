@@ -320,8 +320,12 @@ export class Session {
     this.phaseT = 0;
     this.power = 0;
     this.charging = false;
-    this.aimX = 0;
-    if (this.balls.length === 0) this.balls = [makeBall(0, 0.12, BALL_R)];
+    if (this.balls.length === 0) this.balls = [makeBall(this.aimX, 0.12, BALL_R)];
+    else {
+      this.balls[0]!.x = this.aimX;
+      this.balls[0]!.y = 0.12;
+      this.balls[0]!.alive = true;
+    }
     this.walletOpen = false;
     this.walletPinned = false;
     this.hoverUid = null;

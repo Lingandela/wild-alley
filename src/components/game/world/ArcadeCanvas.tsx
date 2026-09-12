@@ -313,26 +313,43 @@ function Sim({ game }: { game: WildAlleyGame }) {
     }
     if (!wantThrow) chargeLock.current = false;
 
-    if (s.phase === "aim" && !(s.walletOpen && s.walletPinned) && s.seated && !chargeLock.current) {
+    const canAim =
+      (s.phase === "aim" || s.phase === "pick" || s.phase === "intro") &&
+      !(s.walletOpen && s.walletPinned) &&
+      s.seated;
+
+    if (canAim && (s.phase === "pick" || s.phase === "intro") && game.input.pointerDown && !chargeLock.current) {
+      s.readyThrow();
+    }
+
+    if (canAim) {
       const rail = s.world.alleyRail ?? s.lane.rail;
       const steer = (game.input.left() ? -1 : 0) + (game.input.right() ? 1 : 0);
       s.aimX += steer * 0.55 * dt;
       s.aimX = Math.max(-rail + 0.05, Math.min(rail - 0.05, s.aimX));
       if (game.input.left()) s.nudgeHeading(2.5 * dt);
       if (game.input.right()) s.nudgeHeading(-2.5 * dt);
+      if (!game.input.locked && game.input.pointerDown) {
+        const nx = (game.input.px / Math.max(1, gl.domElement.width) - 0.5) * rail * 2;
+        s.aimX = Math.max(-rail + 0.05, Math.min(rail - 0.05, nx));
+      }
       if (s.balls[0]) {
         s.balls[0].x = s.aimX;
         s.balls[0].y = 0.12;
-        s.balls[0].vx = 0;
-        s.balls[0].vy = 0;
         s.balls[0].alive = true;
       }
+    }
+
+    if (s.phase === "aim" && !(s.walletOpen && s.walletPinned) && s.seated) {
+      const rail = s.world.alleyRail ?? s.lane.rail;
       if (game.input.pointerDown) {
-        const drag = (game.input.py - game.input.sy) / Math.max(1, gl.domElement.height);
-        s.power = Math.min(1, Math.max(0, drag * 2.4));
         s.charging = true;
-        const nx = (game.input.px / Math.max(1, gl.domElement.width) - 0.5) * rail * 2;
-        s.aimX = Math.max(-rail + 0.05, Math.min(rail - 0.05, nx));
+        if (!game.input.locked) {
+          const drag = (game.input.py - game.input.sy) / Math.max(1, gl.domElement.height);
+          s.power = Math.min(1, Math.max(0, drag * 2.4));
+          const nx = (game.input.px / Math.max(1, gl.domElement.width) - 0.5) * rail * 2;
+          s.aimX = Math.max(-rail + 0.05, Math.min(rail - 0.05, nx));
+        }
       } else if (s.charging && !game.input.pointerDown && !game.input.up()) {
         if (s.power > 0.14) {
           const split = s.flags.split;
